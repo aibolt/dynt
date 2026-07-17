@@ -1,3 +1,5 @@
+export type { FormationCommand, FormationPhase } from "./lifecycle.js";
+
 export type FormationProfile = "line-push";
 
 export type FormationRoot = Document | DocumentFragment | HTMLElement;
