@@ -70,7 +70,19 @@ test("Formation lifecycle visual checkpoints", async ({ browserName, page }) => 
   await page.goto("/examples/formation-browser/");
   const section = page.locator("#section-target");
   await expect(section).toHaveAttribute("data-dynt-formation-phase", "formed");
-  await page.addStyleTag({ content: "#section-target * { visibility: hidden; }" });
+  await page.addStyleTag({
+    content: `
+      #section-target {
+        box-sizing: border-box;
+        height: 136px;
+        width: 456px;
+      }
+
+      #section-target * {
+        display: none;
+      }
+    `,
+  });
   await expect(section).toHaveScreenshot("formation-formed.png", { animations: "disabled" });
 
   await page.getByRole("button", { name: "Withdraw all" }).click();

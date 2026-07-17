@@ -21,9 +21,10 @@ test("combined mode suppresses Kinetic until Formation is formed", async ({ page
   await move(0.2);
   await expect(section).toHaveCSS("--dynt-pressure", "0.0000");
   await expect(section).toHaveCSS("--dynt-tilt-y", "0.000deg");
+  await expect(section).toHaveAttribute("data-dynt-formation-phase", "unformed");
 
   await page.getByRole("button", { name: "Form" }).click();
-  await expect(page.getByRole("status")).toContainText("section-surface:formed");
+  await expect(section).toHaveAttribute("data-dynt-formation-phase", "formed");
   await move(0.2);
   await expect.poll(() => section.evaluate((element) => (
     Math.abs(Number.parseFloat(element.style.getPropertyValue("--dynt-tilt-y")))
