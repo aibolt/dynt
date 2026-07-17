@@ -95,6 +95,71 @@ test("refresh restores elements that no longer match", () => {
   assert.equal(button.getAttribute("data-dynt-formation"), "application");
 });
 
+test("repeated controllers share enhancement until the final destroy", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = `
+    <main><button class="application" data-dynt-formation="application">Button</button></main>
+  `;
+  const main = document.querySelector("main");
+  const button = document.querySelector("button");
+  const first = createFormation({ root: main, selector: "button" });
+  const second = createFormation({ root: main, selector: "button" });
+
+  assert.deepEqual(first.elements, [button]);
+  assert.deepEqual(second.elements, [button]);
+  assert.equal(button.classList.contains("dynt-formation"), true);
+
+  first.destroy();
+  assert.equal(button.classList.contains("dynt-formation"), true);
+  assert.equal(button.dataset.dyntFormation, "line-push");
+
+  second.destroy();
+  assert.equal(button.classList.contains("application"), true);
+  assert.equal(button.classList.contains("dynt-formation"), false);
+  assert.equal(button.getAttribute("data-dynt-formation"), "application");
+});
+
+test("nested controllers share one enhancement independent of initialization order", () => {
+  for (const innerFirst of [true, false]) {
+    const window = new Window();
+    const document = window.document;
+    document.body.innerHTML = `
+      <main><section><button>Nested</button></section></main>
+    `;
+    const main = document.querySelector("main");
+    const section = document.querySelector("section");
+    const button = document.querySelector("button");
+    const setAttribute = button.setAttribute.bind(button);
+    let formationWrites = 0;
+    button.setAttribute = (name, value) => {
+      if (name === "data-dynt-formation") formationWrites += 1;
+      return setAttribute(name, value);
+    };
+
+    let inner;
+    let outer;
+    if (innerFirst) {
+      inner = createFormation({ root: section, selector: "button" });
+      outer = createFormation({ root: main, selector: "button" });
+    } else {
+      outer = createFormation({ root: main, selector: "button" });
+      inner = createFormation({ root: section, selector: "button" });
+    }
+
+    assert.deepEqual(inner.elements, [button]);
+    assert.deepEqual(outer.elements, [button]);
+    assert.equal(formationWrites, 1);
+
+    outer.destroy();
+    assert.equal(button.dataset.dyntFormation, "line-push");
+
+    inner.destroy();
+    assert.equal(button.dataset.dyntFormation, undefined);
+    assert.equal(button.classList.contains("dynt-formation"), false);
+  }
+});
+
 test("observe enhances synchronous insertions in one batched refresh", async () => {
   const window = new Window();
   const document = window.document;
