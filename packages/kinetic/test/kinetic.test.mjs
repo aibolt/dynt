@@ -8,6 +8,53 @@ function flushMutations(window) {
   return new Promise((resolve) => window.setTimeout(resolve, 0));
 }
 
+function installAnimationFrames(window) {
+  const callbacks = [];
+  let identifier = 0;
+  window.requestAnimationFrame = (callback) => {
+    callbacks.push({ callback, identifier: ++identifier });
+    return identifier;
+  };
+  window.cancelAnimationFrame = (cancelledIdentifier) => {
+    const index = callbacks.findIndex(({ identifier }) => identifier === cancelledIdentifier);
+    if (index >= 0) callbacks.splice(index, 1);
+  };
+  return {
+    get count() {
+      return callbacks.length;
+    },
+    runNext() {
+      const next = callbacks.shift();
+      next?.callback(0);
+    },
+  };
+}
+
+function setRectangle(element, { left = 0, top = 0, width = 100, height = 100 } = {}) {
+  element.getBoundingClientRect = () => ({
+    bottom: top + height,
+    height,
+    left,
+    right: left + width,
+    top,
+    width,
+    x: left,
+    y: top,
+    toJSON() {},
+  });
+}
+
+function dispatchPointer(window, element, type, values = {}) {
+  const event = new window.Event(type, { bubbles: true, composed: true });
+  Object.defineProperties(event, {
+    clientX: { value: values.clientX ?? 50 },
+    clientY: { value: values.clientY ?? 50 },
+    pointerType: { value: values.pointerType ?? "mouse" },
+    pressure: { value: values.pressure ?? 0 },
+  });
+  element.dispatchEvent(event);
+}
+
 test("enhances only matching HTML targets inside the supplied root", () => {
   const window = new Window();
   const document = window.document;
@@ -122,6 +169,214 @@ test("repeated and nested controllers share one decoration until final cleanup",
   assert.equal(button.classList.contains("dynt-kinetic"), false);
 });
 
+test("delegated pointer input writes bounded pressure and tilt then becomes idle", () => {
+  const window = new Window();
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = "<main><button>Button</button></main>";
+  const main = document.querySelector("main");
+  const button = document.querySelector("button");
+  setRectangle(button);
+  const controller = createKinetic({
+    root: main,
+    selector: "button",
+    motion: { response: 1 },
+  });
+
+  dispatchPointer(window, button, "pointermove", { clientX: 100, clientY: 50 });
+  assert.equal(frames.count, 1);
+  frames.runNext();
+
+  assert.equal(button.style.getPropertyValue("--dynt-pointer-x"), "100.00%");
+  assert.equal(button.style.getPropertyValue("--dynt-pointer-y"), "50.00%");
+  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.2929");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-x"), "0.000deg");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "8.000deg");
+  assert.equal(frames.count, 0);
+
+  dispatchPointer(window, button, "pointermove", {
+    clientX: 0,
+    clientY: 0,
+    pointerType: "pen",
+    pressure: 0.8,
+  });
+  frames.runNext();
+  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.8000");
+
+  dispatchPointer(window, main, "pointerleave");
+  frames.runNext();
+  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.0000");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
+
+  controller.destroy();
+});
+
+test("nearest nested surface owns delegated pointer input", () => {
+  const window = new Window();
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = `
+    <main class="surface"><button class="surface">Button</button></main>
+  `;
+  const main = document.querySelector("main");
+  const button = document.querySelector("button");
+  setRectangle(main);
+  setRectangle(button);
+  const controller = createKinetic({
+    root: main,
+    selector: ".surface",
+    motion: { response: 1 },
+  });
+
+  dispatchPointer(window, button, "pointermove", { clientX: 100 });
+  frames.runNext();
+
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "8.000deg");
+  assert.equal(main.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
+  controller.destroy();
+});
+
+test("the most specific shared controller owns motion regardless of initialization order", () => {
+  for (const innerFirst of [true, false]) {
+    const window = new Window();
+    const frames = installAnimationFrames(window);
+    const document = window.document;
+    document.body.innerHTML = "<main><section><button>Button</button></section></main>";
+    const main = document.querySelector("main");
+    const section = document.querySelector("section");
+    const button = document.querySelector("button");
+    setRectangle(button);
+    let inner;
+    let outer;
+
+    if (innerFirst) {
+      inner = createKinetic({
+        root: section,
+        selector: "button",
+        motion: { maxTilt: 4, response: 1 },
+      });
+      outer = createKinetic({
+        root: main,
+        selector: "button",
+        motion: { maxTilt: 20, response: 1 },
+      });
+    } else {
+      outer = createKinetic({
+        root: main,
+        selector: "button",
+        motion: { maxTilt: 20, response: 1 },
+      });
+      inner = createKinetic({
+        root: section,
+        selector: "button",
+        motion: { maxTilt: 4, response: 1 },
+      });
+    }
+
+    dispatchPointer(window, button, "pointermove", { clientX: 100 });
+    assert.equal(frames.count, 1);
+    frames.runNext();
+    assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "4.000deg");
+
+    outer.destroy();
+    inner.destroy();
+  }
+});
+
+test("pause and update control input without rebuilding targets", () => {
+  const window = new Window();
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = "<main><button>Button</button></main>";
+  const button = document.querySelector("button");
+  setRectangle(button);
+  const controller = createKinetic({
+    root: document.querySelector("main"),
+    selector: "button",
+    motion: { response: 1 },
+  });
+
+  controller.pause();
+  dispatchPointer(window, button, "pointermove", { clientX: 100 });
+  assert.equal(frames.count, 0);
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
+
+  controller.resume();
+  controller.update({ effects: { pressure: false }, motion: { maxTilt: 12 } });
+  dispatchPointer(window, button, "pointermove", { clientX: 100 });
+  frames.runNext();
+  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.0000");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "12.000deg");
+  assert.deepEqual(controller.elements, [button]);
+  controller.destroy();
+});
+
+test("reduced motion preserves pressure without scheduling tilt", () => {
+  const window = new Window();
+  const frames = installAnimationFrames(window);
+  window.matchMedia = () => ({ matches: true });
+  const document = window.document;
+  document.body.innerHTML = "<main><button>Button</button></main>";
+  const button = document.querySelector("button");
+  setRectangle(button);
+  const controller = createKinetic({
+    root: document.querySelector("main"),
+    selector: "button",
+  });
+
+  dispatchPointer(window, button, "pointermove", { clientX: 50, clientY: 50 });
+
+  assert.equal(frames.count, 0);
+  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "1.0000");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-x"), "0.000deg");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
+  controller.destroy();
+});
+
+test("damped motion stops scheduling after reaching rest", () => {
+  const window = new Window();
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = "<main><button>Button</button></main>";
+  const button = document.querySelector("button");
+  setRectangle(button);
+  const controller = createKinetic({
+    root: document.querySelector("main"),
+    selector: "button",
+    motion: { response: 0.5 },
+  });
+
+  dispatchPointer(window, button, "pointermove", { clientX: 100 });
+  let frameCount = 0;
+  while (frames.count > 0 && frameCount < 30) {
+    frames.runNext();
+    frameCount += 1;
+  }
+
+  assert.equal(frames.count, 0);
+  assert.equal(frameCount < 30, true);
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "8.000deg");
+  controller.destroy();
+});
+
+test("destroy restores application motion properties exactly", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><button>Button</button></main>";
+  const button = document.querySelector("button");
+  button.style.setProperty("--dynt-pressure", "0.4", "important");
+  const controller = createKinetic({
+    root: document.querySelector("main"),
+    selector: "button",
+  });
+
+  controller.destroy();
+
+  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.4");
+  assert.equal(button.style.getPropertyPriority("--dynt-pressure"), "important");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-x"), "");
+});
+
 test("pause, resume, destroy, and input validation are idempotent", () => {
   const window = new Window();
   const document = window.document;
@@ -146,5 +401,21 @@ test("pause, resume, destroy, and input validation are idempotent", () => {
   assert.throws(
     () => createKinetic({ root: document, selector: "button", exclude: "[" }),
     /invalid exclude selector/,
+  );
+  assert.throws(
+    () => createKinetic({
+      root: document,
+      selector: "button",
+      motion: { maxTilt: 31 },
+    }),
+    /maxTilt must be between 0 and 30/,
+  );
+  assert.throws(
+    () => createKinetic({
+      root: document,
+      selector: "button",
+      effects: { pressure: "yes" },
+    }),
+    /effects must be boolean values/,
   );
 });

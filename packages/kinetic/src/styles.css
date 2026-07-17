@@ -1,12 +1,32 @@
 :where(.dynt-kinetic) {
+  --dynt-kinetic-color: rgb(103 232 249 / 0.3);
+  --dynt-pointer-x: 50%;
+  --dynt-pointer-y: 50%;
+  --dynt-pressure: 0;
+  --dynt-tilt-x: 0deg;
+  --dynt-tilt-y: 0deg;
   isolation: isolate;
   position: relative;
 }
 
 :where(.dynt-kinetic__layer) {
   border-radius: inherit;
+  background: radial-gradient(
+    circle at var(--dynt-pointer-x) var(--dynt-pointer-y),
+    var(--dynt-kinetic-color) 0,
+    transparent 68%
+  );
   inset: 0;
+  opacity: var(--dynt-pressure);
   pointer-events: none;
   position: absolute;
+  transform: perspective(700px) rotateX(var(--dynt-tilt-x)) rotateY(var(--dynt-tilt-y));
+  transform-origin: var(--dynt-pointer-x) var(--dynt-pointer-y);
   z-index: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.dynt-kinetic__layer) {
+    transform: none;
+  }
 }

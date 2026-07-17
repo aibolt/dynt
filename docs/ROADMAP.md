@@ -41,8 +41,8 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 ## Phase 3 — Kinetic minimum viable engine
 
 - [x] Implement the independent `@dynt/kinetic` DOM ownership package.
-- [ ] Add bounded pointer pressure and tilt.
-- [ ] Add cleanup, ownership, and reduced-motion behavior.
+- [x] Add bounded pointer pressure and tilt.
+- [x] Add cleanup, ownership, and reduced-motion behavior.
 - [ ] Verify that Kinetic works on plain HTML without Formation.
 
 ## Phase 4 — Combined operation
