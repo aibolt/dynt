@@ -1,7 +1,17 @@
 :where(.dynt-formation) {
+  --dynt-drift-x: 0px;
+  --dynt-drift-y: 0px;
+  --dynt-formation-duration: 460ms;
+  --dynt-formation-easing: cubic-bezier(0.22, 1, 0.36, 1);
+  --dynt-formation-fill-color: transparent;
+  --dynt-formation-overflow: 14px;
   --dynt-line-color: currentColor;
+  --dynt-line-style: solid;
   --dynt-line-width: 1px;
-  --dynt-formation-duration: 420ms;
+  --dynt-pointer-x: 50%;
+  --dynt-pointer-y: 50%;
+  --dynt-tilt-x: 0deg;
+  --dynt-tilt-y: 0deg;
   isolation: isolate;
   position: relative;
 }
@@ -10,26 +20,70 @@
 :where(.dynt-formation--line-push)::after,
 :where(.dynt-formation--line-rise)::before,
 :where(.dynt-formation--line-rise)::after {
+  box-sizing: border-box;
   content: "";
-  inset: 0;
   pointer-events: none;
   position: absolute;
+  transform-origin: var(--dynt-pointer-x) var(--dynt-pointer-y);
   transition-duration: var(--dynt-formation-duration);
-  transition-property: transform;
-  transition-timing-function: ease-out;
+  transition-property: background-color, transform;
+  transition-timing-function: var(--dynt-formation-easing);
+  will-change: transform;
   z-index: 1;
 }
 
+:where(.dynt-formation--line-push)::before,
+:where(.dynt-formation--line-rise)::after {
+  border-block: var(--dynt-line-width) var(--dynt-line-style) var(--dynt-line-color);
+  inset-block: 0;
+  inset-inline: calc(var(--dynt-formation-overflow) * -1);
+}
+
+:where(.dynt-formation--line-push)::after,
+:where(.dynt-formation--line-rise)::before {
+  border-inline: var(--dynt-line-width) var(--dynt-line-style) var(--dynt-line-color);
+  inset-block: calc(var(--dynt-formation-overflow) * -1);
+  inset-inline: 0;
+}
+
 :where(.dynt-formation--line-push)::before {
-  border-block: var(--dynt-line-width) solid var(--dynt-line-color);
-  transform: scaleX(0);
-  transform-origin: left;
+  transform:
+    translate3d(var(--dynt-drift-x), var(--dynt-drift-y), 0)
+    perspective(700px)
+    rotateX(var(--dynt-tilt-x))
+    rotateY(var(--dynt-tilt-y))
+    scaleX(0);
+  transform-origin: left center;
 }
 
 :where(.dynt-formation--line-push)::after {
-  border-inline: var(--dynt-line-width) solid var(--dynt-line-color);
-  transform: scaleY(0);
-  transform-origin: top;
+  transform:
+    translate3d(var(--dynt-drift-x), var(--dynt-drift-y), 0)
+    perspective(700px)
+    rotateX(var(--dynt-tilt-x))
+    rotateY(var(--dynt-tilt-y))
+    scaleY(0);
+  transform-origin: center top;
+}
+
+:where(.dynt-formation--line-rise)::before {
+  transform:
+    translate3d(var(--dynt-drift-x), var(--dynt-drift-y), 0)
+    perspective(700px)
+    rotateX(var(--dynt-tilt-x))
+    rotateY(var(--dynt-tilt-y))
+    scaleY(0);
+  transform-origin: center bottom;
+}
+
+:where(.dynt-formation--line-rise)::after {
+  transform:
+    translate3d(var(--dynt-drift-x), var(--dynt-drift-y), 0)
+    perspective(700px)
+    rotateX(var(--dynt-tilt-x))
+    rotateY(var(--dynt-tilt-y))
+    scaleX(0);
+  transform-origin: right center;
 }
 
 :where(.dynt-formation--line-push[data-dynt-formation-phase="constructing"])::before,
@@ -37,7 +91,12 @@
 :where(.dynt-formation--line-push[data-dynt-formation-phase="revealing"])::before,
 :where(.dynt-formation--line-push[data-dynt-formation-phase="formed"])::before,
 :where(.dynt-formation--line-push[data-dynt-formation-phase="withdrawing"])::before {
-  transform: scaleX(1);
+  transform:
+    translate3d(var(--dynt-drift-x), var(--dynt-drift-y), 0)
+    perspective(700px)
+    rotateX(var(--dynt-tilt-x))
+    rotateY(var(--dynt-tilt-y))
+    scaleX(1);
 }
 
 :where(.dynt-formation--line-push[data-dynt-formation-phase="constructing"])::after,
@@ -45,24 +104,12 @@
 :where(.dynt-formation--line-push[data-dynt-formation-phase="revealing"])::after,
 :where(.dynt-formation--line-push[data-dynt-formation-phase="formed"])::after,
 :where(.dynt-formation--line-push[data-dynt-formation-phase="withdrawing"])::after {
-  transform: scaleY(1);
-}
-
-:where(.dynt-formation--line-push[data-dynt-formation-phase="constructing"])::after,
-:where(.dynt-formation--line-push[data-dynt-formation-phase="deconstructing"])::before {
-  transition-delay: calc(var(--dynt-formation-duration) * 0.35);
-}
-
-:where(.dynt-formation--line-rise)::before {
-  border-inline: var(--dynt-line-width) solid var(--dynt-line-color);
-  transform: scaleY(0);
-  transform-origin: bottom;
-}
-
-:where(.dynt-formation--line-rise)::after {
-  border-block: var(--dynt-line-width) solid var(--dynt-line-color);
-  transform: scaleX(0);
-  transform-origin: right;
+  transform:
+    translate3d(var(--dynt-drift-x), var(--dynt-drift-y), 0)
+    perspective(700px)
+    rotateX(var(--dynt-tilt-x))
+    rotateY(var(--dynt-tilt-y))
+    scaleY(1);
 }
 
 :where(.dynt-formation--line-rise[data-dynt-formation-phase="constructing"])::before,
@@ -70,7 +117,12 @@
 :where(.dynt-formation--line-rise[data-dynt-formation-phase="revealing"])::before,
 :where(.dynt-formation--line-rise[data-dynt-formation-phase="formed"])::before,
 :where(.dynt-formation--line-rise[data-dynt-formation-phase="withdrawing"])::before {
-  transform: scaleY(1);
+  transform:
+    translate3d(var(--dynt-drift-x), var(--dynt-drift-y), 0)
+    perspective(700px)
+    rotateX(var(--dynt-tilt-x))
+    rotateY(var(--dynt-tilt-y))
+    scaleY(1);
 }
 
 :where(.dynt-formation--line-rise[data-dynt-formation-phase="constructing"])::after,
@@ -78,9 +130,25 @@
 :where(.dynt-formation--line-rise[data-dynt-formation-phase="revealing"])::after,
 :where(.dynt-formation--line-rise[data-dynt-formation-phase="formed"])::after,
 :where(.dynt-formation--line-rise[data-dynt-formation-phase="withdrawing"])::after {
-  transform: scaleX(1);
+  transform:
+    translate3d(var(--dynt-drift-x), var(--dynt-drift-y), 0)
+    perspective(700px)
+    rotateX(var(--dynt-tilt-x))
+    rotateY(var(--dynt-tilt-y))
+    scaleX(1);
 }
 
+:where(.dynt-formation[data-dynt-formation-phase="enclosed"])::before {
+  background-color: var(--dynt-formation-fill-color);
+}
+
+:where(.dynt-formation[data-dynt-formation-phase="revealing"])::before,
+:where(.dynt-formation[data-dynt-formation-phase="formed"])::before {
+  background-color: transparent;
+}
+
+:where(.dynt-formation--line-push[data-dynt-formation-phase="constructing"])::after,
+:where(.dynt-formation--line-push[data-dynt-formation-phase="deconstructing"])::before,
 :where(.dynt-formation--line-rise[data-dynt-formation-phase="constructing"])::after,
 :where(.dynt-formation--line-rise[data-dynt-formation-phase="deconstructing"])::before {
   transition-delay: calc(var(--dynt-formation-duration) * 0.35);

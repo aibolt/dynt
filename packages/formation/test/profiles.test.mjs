@@ -47,8 +47,24 @@ function customProfile(name = "custom-lines") {
 test("default registry exposes independently described profiles", () => {
   assert.deepEqual(defaultFormationProfiles.names, ["line-push", "line-rise"]);
   assert.equal(
+    defaultFormationProfiles.get("line-push").geometry.type,
+    "line-forge",
+  );
+  assert.equal(
     defaultFormationProfiles.get("line-push").geometry.edgeOrder,
     "horizontal-vertical",
+  );
+  assert.deepEqual(
+    defaultFormationProfiles.get("line-push").tokens,
+    [
+      "duration",
+      "easing",
+      "fill-color",
+      "line-color",
+      "line-style",
+      "line-width",
+      "overflow",
+    ],
   );
   assert.equal(
     defaultFormationProfiles.get("line-rise").geometry.edgeOrder,

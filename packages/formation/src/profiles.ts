@@ -12,7 +12,7 @@ export type FormationProfileDefinition<Name extends string = string> = Readonly<
   name: Name;
   className: string;
   geometry: Readonly<{
-    type: "edge-lines";
+    type: "edge-lines" | "line-forge";
     edgeOrder: "horizontal-vertical" | "vertical-horizontal";
   }>;
   tokens: readonly FormationTokenName[];
@@ -53,7 +53,7 @@ export function createFormationProfileRegistry<
     }
     if (
       !profile.geometry
-      || profile.geometry.type !== "edge-lines"
+      || (profile.geometry.type !== "edge-lines" && profile.geometry.type !== "line-forge")
       || (
         profile.geometry.edgeOrder !== "horizontal-vertical"
         && profile.geometry.edgeOrder !== "vertical-horizontal"
@@ -115,10 +115,18 @@ const BUILTIN_PROFILES = [
     name: "line-push",
     className: "dynt-formation--line-push",
     geometry: {
-      type: "edge-lines",
+      type: "line-forge",
       edgeOrder: "horizontal-vertical",
     },
-    tokens: ["duration", "line-color", "line-width"],
+    tokens: [
+      "duration",
+      "easing",
+      "fill-color",
+      "line-color",
+      "line-style",
+      "line-width",
+      "overflow",
+    ],
     lifecycle: {
       formComplete: {
         propertyName: "transform",
@@ -139,10 +147,18 @@ const BUILTIN_PROFILES = [
     name: "line-rise",
     className: "dynt-formation--line-rise",
     geometry: {
-      type: "edge-lines",
+      type: "line-forge",
       edgeOrder: "vertical-horizontal",
     },
-    tokens: ["duration", "line-color", "line-width"],
+    tokens: [
+      "duration",
+      "easing",
+      "fill-color",
+      "line-color",
+      "line-style",
+      "line-width",
+      "overflow",
+    ],
     lifecycle: {
       formComplete: {
         propertyName: "transform",

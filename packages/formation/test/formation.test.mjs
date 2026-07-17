@@ -86,21 +86,65 @@ test("applies root tokens and restores application inline styles exactly", () =>
     selector: "button",
     tokens: {
       duration: 180,
+      easing: "linear",
+      fillColor: "rgb(2 12 18 / 0.8)",
       lineColor: "cyan",
+      lineStyle: "dashed",
       lineWidth: "2px",
+      overflow: 14,
     },
   });
 
   assert.equal(button.style.getPropertyValue("--dynt-formation-duration"), "180ms");
+  assert.equal(button.style.getPropertyValue("--dynt-formation-easing"), "linear");
+  assert.equal(button.style.getPropertyValue("--dynt-formation-fill-color"), "rgb(2 12 18 / 0.8)");
   assert.equal(button.style.getPropertyValue("--dynt-line-color"), "cyan");
   assert.equal(button.style.getPropertyPriority("--dynt-line-color"), "");
+  assert.equal(button.style.getPropertyValue("--dynt-line-style"), "dashed");
   assert.equal(button.style.getPropertyValue("--dynt-line-width"), "2px");
+  assert.equal(button.style.getPropertyValue("--dynt-formation-overflow"), "14px");
 
   controller.destroy();
   assert.equal(button.style.getPropertyValue("--dynt-formation-duration"), "");
+  assert.equal(button.style.getPropertyValue("--dynt-formation-easing"), "");
+  assert.equal(button.style.getPropertyValue("--dynt-formation-fill-color"), "");
   assert.equal(button.style.getPropertyValue("--dynt-line-color"), "orange");
   assert.equal(button.style.getPropertyPriority("--dynt-line-color"), "important");
+  assert.equal(button.style.getPropertyValue("--dynt-line-style"), "");
   assert.equal(button.style.getPropertyValue("--dynt-line-width"), "");
+  assert.equal(button.style.getPropertyValue("--dynt-formation-overflow"), "");
+});
+
+test("local Line Forge tokens override controller values", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = `
+    <main>
+      <article
+        data-dynt-formation-easing="ease-in-out"
+        data-dynt-fill-color="navy"
+        data-dynt-line-style="dotted"
+        data-dynt-formation-overflow="22"
+      >Article</article>
+    </main>
+  `;
+  const article = document.querySelector("article");
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "article",
+    tokens: {
+      easing: "linear",
+      fillColor: "black",
+      lineStyle: "solid",
+      overflow: 4,
+    },
+  });
+
+  assert.equal(article.style.getPropertyValue("--dynt-formation-easing"), "ease-in-out");
+  assert.equal(article.style.getPropertyValue("--dynt-formation-fill-color"), "navy");
+  assert.equal(article.style.getPropertyValue("--dynt-line-style"), "dotted");
+  assert.equal(article.style.getPropertyValue("--dynt-formation-overflow"), "22px");
+  controller.destroy();
 });
 
 test("layers root, selector-group, and local tokens in order", () => {
