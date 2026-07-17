@@ -22,8 +22,8 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 - [x] Define deterministic Formation lifecycle phases and transitions.
 - [x] Expose reversible Line Push form and withdraw commands.
 - [x] Respect reduced-motion preferences in lifecycle commands.
-- [ ] Preserve original element semantics and focus behavior.
-- [ ] Verify construction and reverse deconstruction.
+- [x] Preserve original element semantics and focus behavior.
+- [x] Verify construction and reverse deconstruction.
 
 ## Phase 2 — Formation system
 
