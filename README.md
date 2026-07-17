@@ -68,8 +68,8 @@ The root and selector are always explicit. Matching elements added later are ado
 
 ## Quality gates
 
-- 46 Formation unit, DOM, profile, lifecycle, viewport-flow, shadow-root, and performance checks.
-- 26 Kinetic unit, DOM, input, geometry, effects, shadow-root, and performance checks.
+- 47 Formation unit, DOM, profile, lifecycle, bidirectional viewport-flow, shadow-root, and performance checks.
+- 29 Kinetic unit, DOM, input, geometry, semantic-content, wave, shadow-root, and performance checks.
 - 6 adapter checks across React and Web Components.
 - 2 composition checks covering initialization and cleanup order.
 - 28 passing browser checks plus two intentional visual-test skips across Chromium, Firefox, and WebKit.

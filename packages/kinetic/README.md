@@ -43,7 +43,7 @@ The controller enhances matching HTML elements without replacing them. It owns o
 
 ## Pressure and tilt
 
-One delegated pointer pipeline per controller resolves the nearest managed surface. Pointer position and pen or touch pressure feed bounded `--dynt-pressure`, `--dynt-pointer-x`, `--dynt-pointer-y`, `--dynt-tilt-x`, and `--dynt-tilt-y` properties. Kinetic applies those properties only to its decoration layer, so it does not replace the host element's transform or background.
+One delegated pointer pipeline per controller resolves the nearest managed surface. Pointer position and pen or touch pressure feed bounded `--dynt-pressure`, `--dynt-pointer-x`, `--dynt-pointer-y`, `--dynt-tilt-x`, and `--dynt-tilt-y` properties. The decoration layer and any Formation rails stay fixed. With `content` enabled, Kinetic moves locally owned semantic content at bounded depths without replacing the host element's transform or background.
 
 `maxTilt` is limited to 30 degrees, and `response` must be greater than zero and at most one. Damped interpolation stops requesting frames when every active surface reaches its target or returns to rest. Pausing immediately returns owned surfaces to rest and suspends input processing.
 
@@ -56,7 +56,7 @@ Advanced effects remain independent switches and are rendered by the core packag
 - `drift` adds bounded organic movement only while a pointer actively owns a surface, then decays to zero.
 - `wave` sends a geometry-aware directional cell flow from the contact point toward the opposite terminal. A new wave replaces the active flow by default; `flow.multi` enables a bounded set.
 - `impact()` produces one bounded local pressure and tilt rebound, with optional normalized coordinates and pressure.
-- `content` exposes `--dynt-content-x` and `--dynt-content-y` for explicit application-owned content reactors without overwriting content transforms.
+- `content` automatically identifies up to 48 locally owned semantic reactors. Tilt and drift translate them at bounded depths; waves lift, rebound, and settle them in distance order. `data-dynt-reactor` marks a custom group, and nested managed surfaces remain isolated.
 
 The pressure field is a bounded canvas lens. It raises only nearby cells, stops after pointer stillness, caps device-pixel ratio at `1.5`, and defaults to at most `61` cells. The same renderer supports square, connected hexagon, circle, and interlocked diamond geometry.
 

@@ -30,7 +30,7 @@ import "@dynt/formation/styles.css";
 
 Configuration precedence is profile CSS, controller tokens, matching groups in array order, then local data attributes.
 
-`viewportFlow: true` uses a `1160ms` travel duration, `110ms` target stagger, `680px` maximum line length, and `36px` overrun. An object can override `enabled`, `duration`, `stagger`, `lineLength`, and `overrun`. Duration accepts `120` to `4000` milliseconds, stagger `0` to `1000` milliseconds, line length `80` to `1200` pixels, and overrun `0` to `160` pixels. Target delays are bounded to an 1800ms sequence window.
+`viewportFlow: true` uses a `1160ms` travel duration, `110ms` target stagger, `680px` maximum line length, and `36px` overrun. An object can override `enabled`, `duration`, `stagger`, `lineLength`, and `overrun`. Duration accepts `120` to `4000` milliseconds, stagger `0` to `1000` milliseconds, line length `80` to `1200` pixels, and overrun `0` to `160` pixels. Target delays are bounded to an 1800ms sequence window. `withdraw()` reverses the transient line travel and target order before the permanent rails deconstruct.
 
 ### Formation controller
 
@@ -52,7 +52,7 @@ Phases are `unformed`, `locating`, `constructing`, `enclosed`, `revealing`, `for
 - `line-push` forges horizontal rails before vertical rails.
 - `line-rise` forges vertical rails before horizontal rails.
 
-Both built-ins use four complete Line Forge rails, optional corner overflow, enclosure fill, content reveal, shared Kinetic motion channels, and reversible deconstruction.
+Both built-ins use four complete Line Forge rails, optional corner overflow, enclosure fill, content reveal, fixed geometry during Kinetic response, and reversible deconstruction.
 
 `createFormationProfileRegistry(definitions)` creates an immutable, typed registry. Each definition declares a unique name, a `dynt-formation--` class, edge order, supported tokens, transition completion hooks, rendering mode, and capability metadata. A custom profile supplies its own scoped CSS for that class.
 
@@ -82,6 +82,8 @@ Effect defaults are `pressure: true`, `tilt: true`, `content: false`, `drift: fa
 
 | Motion option | Default | Valid range |
 | --- | --- | --- |
+| `contentLift` | `8` pixels | `0` to `24` |
+| `contentTravel` | `6` pixels | `0` to `20` |
 | `maxTilt` | `8` degrees | `0` to `30` |
 | `response` | `0.18` | Greater than `0` through `1` |
 | `drift` | `1.5` pixels | `0` to `4` |
@@ -114,7 +116,7 @@ Impact input accepts `pressure` from `0` to `1` and normalized `x` and `y` coord
 
 Kinetic writes these engine-owned custom properties on a managed host: `--dynt-pressure`, `--dynt-pointer-x`, `--dynt-pointer-y`, `--dynt-tilt-x`, `--dynt-tilt-y`, `--dynt-drift-x`, `--dynt-drift-y`, `--dynt-content-x`, `--dynt-content-y`, `--dynt-wave-x`, `--dynt-wave-y`, `--dynt-wave-scale`, and `--dynt-wave-opacity`.
 
-Applications can set `--dynt-cell-size` and `--dynt-kinetic-color`, or use `data-dynt-cell-shape` and `data-dynt-cell-size` for target-local geometry. Content response values are opt-in channels: DYNT does not overwrite the application's content transform.
+Applications can set `--dynt-cell-size` and `--dynt-kinetic-color`, or use `data-dynt-cell-shape` and `data-dynt-cell-size` for target-local geometry. When `effects.content` is enabled, Kinetic automatically identifies up to 48 semantic content groups per surface. Tilt and drift move those reactors through the individual CSS `translate` property while the Formation rails, Kinetic canvas, host transform, and nested managed surfaces stay fixed. Mark a custom group with `data-dynt-reactor` when its markup has no semantic candidate. A wave applies a distance-timed lift, rebound, and settle sequence to the same locally owned reactors.
 
 ## Coordination
 
