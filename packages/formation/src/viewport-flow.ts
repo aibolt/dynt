@@ -80,6 +80,7 @@ export function createFormationFlowFlight(
   element: HTMLElement,
   flow: ResolvedFormationViewportFlow,
   index: number,
+  direction: "form" | "withdraw" = "form",
 ) {
   const bounds = element.getBoundingClientRect();
   if (!bounds.width || !bounds.height) return null;
@@ -100,6 +101,7 @@ export function createFormationFlowFlight(
   const flight = document.createElement("div");
   flight.className = "dynt-formation-flow";
   flight.dataset.dyntFormationFlow = "";
+  flight.dataset.dyntFlowDirection = direction;
   flight.dataset.dyntFlowIndex = String(index);
   if (element.id) flight.dataset.dyntFlowTarget = element.id;
   flight.style.setProperty("--dynt-flow-duration", `${flow.duration}ms`);

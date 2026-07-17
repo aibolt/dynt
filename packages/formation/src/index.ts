@@ -513,6 +513,7 @@ export function createFormation<ProfileName extends string = FormationProfile>({
   function startViewportFlowSequence(
     targets: readonly HTMLElement[],
     flow: ResolvedFormationViewportFlow = resolvedViewportFlow,
+    command: FormationCommand = "form",
   ) {
     if (
       !flow.enabled
@@ -522,7 +523,7 @@ export function createFormation<ProfileName extends string = FormationProfile>({
     ) {
       for (const element of targets) {
         const ownership = ELEMENT_OWNERSHIP.get(element);
-        if (ownership) runFormationCommand(element, ownership, "form", prefersReducedMotion(view));
+        if (ownership) runFormationCommand(element, ownership, command, prefersReducedMotion(view));
       }
       return;
     }
@@ -531,21 +532,23 @@ export function createFormation<ProfileName extends string = FormationProfile>({
     if (!layer) {
       for (const element of targets) {
         const ownership = ELEMENT_OWNERSHIP.get(element);
-        if (ownership) runFormationCommand(element, ownership, "form");
+        if (ownership) runFormationCommand(element, ownership, command);
       }
       return;
     }
 
-    const lastIndex = Math.max(1, targets.length - 1);
-    for (const [index, element] of targets.entries()) {
+    const orderedTargets = command === "withdraw" ? [...targets].reverse() : targets;
+    const lastIndex = Math.max(1, orderedTargets.length - 1);
+    for (const [index, element] of orderedTargets.entries()) {
       const sequenceDelay = Math.min(index * flow.stagger, (index / lastIndex) * 1800);
       scheduleFlow(element, () => {
         const ownership = ELEMENT_OWNERSHIP.get(element);
-        if (!ownership || !elements.has(element) || ownership.phase === "formed") return;
+        const terminalPhase = command === "form" ? "formed" : "unformed";
+        if (!ownership || !elements.has(element) || ownership.phase === terminalPhase) return;
 
-        const flight = createFormationFlowFlight(document, element, flow, index);
+        const flight = createFormationFlowFlight(document, element, flow, index, command);
         if (!flight) {
-          runFormationCommand(element, ownership, "form");
+          runFormationCommand(element, ownership, command);
           return;
         }
 
@@ -556,7 +559,7 @@ export function createFormation<ProfileName extends string = FormationProfile>({
 
         scheduleFlow(element, () => {
           const current = ELEMENT_OWNERSHIP.get(element);
-          if (current && elements.has(element)) runFormationCommand(element, current, "form");
+          if (current && elements.has(element)) runFormationCommand(element, current, command);
         }, flow.duration * 0.42);
         scheduleFlow(element, () => removeFlight(element, flight), flow.duration + 80);
       }, sequenceDelay);
@@ -866,7 +869,14 @@ export function createFormation<ProfileName extends string = FormationProfile>({
       startViewportFlowSequence(targets);
     },
     withdraw(target) {
-      runCommand("withdraw", target);
+      if (destroyed) return;
+      if (!resolvedViewportFlow.enabled) {
+        runCommand("withdraw", target);
+        return;
+      }
+      const targets = commandTargets(target);
+      for (const element of targets) cancelViewportFlow(element);
+      startViewportFlowSequence(targets, resolvedViewportFlow, "withdraw");
     },
     subscribe(listener) {
       if (typeof listener !== "function") {

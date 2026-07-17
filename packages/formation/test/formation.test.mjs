@@ -134,6 +134,49 @@ test("viewport flow travels from the window and stages targets in order", async 
   assert.equal(document.querySelector("[data-dynt-formation-flow-layer]"), null);
 });
 
+test("viewport flow withdraws targets in reverse order with reversed flights", async () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><button id='first'>First</button><button id='second'>Second</button></main>";
+  const first = document.querySelector("#first");
+  const second = document.querySelector("#second");
+  setRectangle(first, { left: 120, top: 80, width: 240, height: 60 });
+  setRectangle(second, { left: 420, top: 220, width: 180, height: 70 });
+
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "button",
+    viewportFlow: { duration: 120, stagger: 80 },
+  });
+  await new Promise((resolve) => window.setTimeout(resolve, 60));
+  dispatchTransformTransition(window, first, "::after");
+  await new Promise((resolve) => window.setTimeout(resolve, 80));
+  dispatchTransformTransition(window, second, "::after");
+
+  controller.withdraw();
+
+  const layer = document.querySelector("[data-dynt-formation-flow-layer]");
+  assert.equal(
+    layer.querySelector("[data-dynt-flow-target='second']").dataset.dyntFlowDirection,
+    "withdraw",
+  );
+  assert.equal(layer.querySelector("[data-dynt-flow-target='first']"), null);
+  assert.equal(second.dataset.dyntFormationPhase, "formed");
+
+  await new Promise((resolve) => window.setTimeout(resolve, 60));
+  assert.equal(second.dataset.dyntFormationPhase, "deconstructing");
+  assert.equal(first.dataset.dyntFormationPhase, "formed");
+
+  await new Promise((resolve) => window.setTimeout(resolve, 80));
+  assert.equal(first.dataset.dyntFormationPhase, "deconstructing");
+  assert.equal(
+    layer.querySelector("[data-dynt-flow-target='first']").dataset.dyntFlowDirection,
+    "withdraw",
+  );
+
+  controller.destroy();
+});
+
 test("applies root tokens and restores application inline styles exactly", () => {
   const window = new Window();
   const document = window.document;

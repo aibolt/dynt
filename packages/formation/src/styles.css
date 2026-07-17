@@ -54,6 +54,10 @@
   width: 0;
 }
 
+:where(.dynt-formation-flow[data-dynt-flow-direction="withdraw"] .dynt-formation-flow-line) {
+  animation-direction: reverse;
+}
+
 :where(.dynt-formation-flow-line--top) {
   animation: dynt-flow-from-left var(--dynt-flow-duration) var(--dynt-flow-easing) both;
   left: calc(var(--dynt-flow-x-length) * -1);
