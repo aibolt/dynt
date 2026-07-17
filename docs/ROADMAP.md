@@ -1,5 +1,7 @@
 # Roadmap
 
+This checklist tracks delivery status. See the [full implementation plan](IMPLEMENTATION_PLAN.md) for architecture, contracts, gates, testing, framework support, and the immediate work queue.
+
 ## Phase 0 — Foundation
 
 - [x] Create a clean repository.
@@ -24,6 +26,12 @@
 - [ ] Add responsive measurement and reduced-motion behavior.
 - [ ] Add additional formations only after Line Push passes its contract tests.
 
+## Phase 2.5 — Formation hardening
+
+- [ ] Add browser coverage for Chromium, Firefox, and WebKit.
+- [ ] Add lifecycle visual regression checkpoints.
+- [ ] Record accessibility and performance evidence.
+
 ## Phase 3 — Kinetic minimum viable engine
 
 - [ ] Implement `@dynt/kinetic` as an independent package.
@@ -38,11 +46,23 @@
 - [ ] Add waves and impacts without changing Formation geometry.
 - [ ] Verify Formation-only, Kinetic-only, and combined installations.
 
+## Phase 4.5 — Advanced Kinetic effects
+
+- [ ] Add advanced effects one at a time behind independent configuration.
+- [ ] Add rendering caps, idle suspension, and performance benchmarks.
+- [ ] Verify nested ownership and effect cleanup.
+
 ## Phase 5 — Framework support
 
 - [ ] Add a thin React adapter.
 - [ ] Add adapters for other frameworks based on demand.
 - [ ] Keep all behavior inside the framework-independent engines.
+
+## Phase 5.5 — Release engineering
+
+- [ ] Add protected continuous-integration checks.
+- [ ] Add reproducible package builds and provenance.
+- [ ] Add versioning, release notes, and rollback procedures.
 
 ## Phase 6 — Public release
 
