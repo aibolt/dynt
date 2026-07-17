@@ -33,6 +33,49 @@ test("enhances only matching elements inside the supplied root", () => {
   assert.equal(document.querySelector("#outside").dataset.dyntFormation, undefined);
 });
 
+test("preserves target identity and application event behavior", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><button>Button</button></main>";
+  const button = document.querySelector("button");
+  let clicks = 0;
+  button.addEventListener("click", () => {
+    clicks += 1;
+  });
+
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "button",
+  });
+
+  assert.equal(document.querySelector("button"), button);
+  button.click();
+  assert.equal(clicks, 1);
+
+  controller.destroy();
+  button.click();
+  assert.equal(clicks, 2);
+});
+
+test("skips non-HTML matches without partially enhancing them", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = `
+    <main>
+      <button>HTML target</button>
+      <svg><rect></rect></svg>
+    </main>
+  `;
+  const rectangle = document.querySelector("rect");
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "button, rect",
+  });
+
+  assert.deepEqual(controller.elements, [document.querySelector("button")]);
+  assert.equal(rectangle.hasAttribute("data-dynt-formation"), false);
+});
+
 test("ignores built-in and custom excluded subtrees", () => {
   const window = new Window();
   const document = window.document;
@@ -398,6 +441,26 @@ test("rejects an empty selector", () => {
   assert.throws(
     () => createFormation({ root: window.document, selector: "  " }),
     /non-empty selector/,
+  );
+});
+
+test("rejects an invalid root", () => {
+  assert.throws(
+    () => createFormation({ root: null, selector: "button" }),
+    /Document, DocumentFragment, or HTML element root/,
+  );
+});
+
+test("rejects an unknown profile", () => {
+  const window = new Window();
+
+  assert.throws(
+    () => createFormation({
+      root: window.document,
+      selector: "button",
+      profile: "unknown",
+    }),
+    /unknown profile: unknown/,
   );
 });
 

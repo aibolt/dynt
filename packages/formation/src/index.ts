@@ -43,12 +43,35 @@ type ElementOwnership = {
 
 const BASE_CLASS = "dynt-formation";
 const DEFAULT_EXCLUDE_SELECTOR = "[data-dynt-ignore]";
+const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 const PHASE_ATTRIBUTE = "data-dynt-formation-phase";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const PROFILE_CLASSES: Record<FormationProfile, string> = {
   "line-push": "dynt-formation--line-push",
 };
 const ELEMENT_OWNERSHIP = new WeakMap<HTMLElement, ElementOwnership>();
+
+function isFormationRoot(value: unknown): value is FormationRoot {
+  if (!value || typeof value !== "object") return false;
+
+  const root = value as {
+    addEventListener?: unknown;
+    namespaceURI?: string | null;
+    nodeType?: number;
+    querySelector?: unknown;
+    querySelectorAll?: unknown;
+    removeEventListener?: unknown;
+  };
+  const supportedNode = root.nodeType === 9
+    || root.nodeType === 11
+    || (root.nodeType === 1 && root.namespaceURI === HTML_NAMESPACE);
+
+  return supportedNode
+    && typeof root.addEventListener === "function"
+    && typeof root.removeEventListener === "function"
+    && typeof root.querySelector === "function"
+    && typeof root.querySelectorAll === "function";
+}
 
 function setFormationPhase(
   element: HTMLElement,
@@ -197,7 +220,7 @@ function isExcluded(element: HTMLElement, root: FormationRoot, excludeSelector: 
 function findTargets(root: FormationRoot, selector: string, excludeSelector: string) {
   const targets = Array.from(root.querySelectorAll<HTMLElement>(selector)).filter(
     (element) => (
-      element.namespaceURI === "http://www.w3.org/1999/xhtml"
+      element.namespaceURI === HTML_NAMESPACE
       && !isExcluded(element, root, excludeSelector)
     ),
   );
@@ -220,12 +243,20 @@ export function createFormation({
   profile = "line-push",
   observe = false,
 }: FormationOptions): FormationController {
-  if (!selector.trim()) {
+  if (!isFormationRoot(root)) {
+    throw new TypeError("DYNT Formation requires a Document, DocumentFragment, or HTML element root.");
+  }
+
+  if (typeof selector !== "string" || !selector.trim()) {
     throw new TypeError("DYNT Formation requires a non-empty selector.");
   }
 
-  if (exclude !== undefined && !exclude.trim()) {
+  if (exclude !== undefined && (typeof exclude !== "string" || !exclude.trim())) {
     throw new TypeError("DYNT Formation requires a non-empty exclude selector.");
+  }
+
+  if (!Object.hasOwn(PROFILE_CLASSES, profile)) {
+    throw new TypeError(`DYNT Formation received an unknown profile: ${String(profile)}.`);
   }
 
   const profileClass = PROFILE_CLASSES[profile];
