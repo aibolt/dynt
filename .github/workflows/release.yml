@@ -48,4 +48,6 @@ jobs:
         run: npm audit --audit-level=high
 
       - name: Publish public packages
-        run: npm publish --workspaces --access public
+        run: npm run publish:packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

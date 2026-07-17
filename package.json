@@ -16,6 +16,7 @@
     "test": "npm run test --workspaces --if-present && node --test test/*.test.mjs",
     "test:browser": "playwright test",
     "test:packages": "npm run build && node scripts/verify-packages.mjs",
+    "publish:packages": "node scripts/publish-packages.mjs",
     "verify:release-version": "node scripts/verify-release-version.mjs"
   },
   "devDependencies": {
