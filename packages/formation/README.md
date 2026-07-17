@@ -11,10 +11,11 @@ import "@dynt/formation/styles.css";
 const formation = createFormation({
   root: document,
   selector: "main section, main button",
+  observe: true,
 });
 
 formation.refresh();
 formation.destroy();
 ```
 
-The initializer only enhances matching elements inside the supplied root. This first slice handles elements already in the DOM; automatic observation of future elements is the next milestone.
+The initializer only enhances matching elements inside the supplied root. Set `observe: true` to enhance matching elements inserted later. Mutation records are batched into one refresh operation, and `destroy()` disconnects observation before restoring Formation-owned state.

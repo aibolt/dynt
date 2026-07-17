@@ -6,6 +6,7 @@ export type FormationOptions = {
   root: FormationRoot;
   selector: string;
   profile?: FormationProfile;
+  observe?: boolean;
 };
 
 export type FormationController = {
@@ -42,6 +43,7 @@ export function createFormation({
   root,
   selector,
   profile = "line-push",
+  observe = false,
 }: FormationOptions): FormationController {
   if (!selector.trim()) {
     throw new TypeError("DYNT Formation requires a non-empty selector.");
@@ -49,6 +51,11 @@ export function createFormation({
 
   const profileClass = PROFILE_CLASSES[profile];
   const snapshots = new Map<HTMLElement, ElementSnapshot>();
+  const document = root.nodeType === 9 ? root as Document : root.ownerDocument;
+  const view = document?.defaultView;
+  let destroyed = false;
+  let refreshScheduled = false;
+  let observer: MutationObserver | null = null;
 
   function enhance(element: HTMLElement) {
     if (snapshots.has(element)) return false;
@@ -65,6 +72,8 @@ export function createFormation({
   }
 
   function refresh() {
+    if (destroyed) return 0;
+
     let enhancedCount = 0;
 
     for (const element of findTargets(root, selector)) {
@@ -74,7 +83,28 @@ export function createFormation({
     return enhancedCount;
   }
 
+  function scheduleRefresh() {
+    if (destroyed || refreshScheduled) return;
+    refreshScheduled = true;
+
+    const run = () => {
+      refreshScheduled = false;
+      refresh();
+    };
+
+    if (view?.queueMicrotask) {
+      view.queueMicrotask(run);
+    } else {
+      queueMicrotask(run);
+    }
+  }
+
   function destroy() {
+    if (destroyed) return;
+    destroyed = true;
+    observer?.disconnect();
+    observer = null;
+
     for (const [element, snapshot] of snapshots) {
       if (!snapshot.hadBaseClass) element.classList.remove(BASE_CLASS);
       if (!snapshot.hadProfileClass) element.classList.remove(profileClass);
@@ -90,6 +120,16 @@ export function createFormation({
   }
 
   refresh();
+
+  if (observe) {
+    if (!view?.MutationObserver) {
+      destroy();
+      throw new TypeError("DYNT Formation observation requires MutationObserver support.");
+    }
+
+    observer = new view.MutationObserver(scheduleRefresh);
+    observer.observe(root, { childList: true, subtree: true });
+  }
 
   return {
     get elements() {
