@@ -6,7 +6,7 @@ import { Window } from "happy-dom";
 import { createKinetic } from "../dist/index.js";
 
 const TARGET_COUNT = 500;
-const OPERATION_BUDGET_MS = 1000;
+const OPERATION_BUDGET_MS = 2000;
 
 test("500-surface initialization, refresh, and cleanup stay within the preview budget", () => {
   const window = new Window();

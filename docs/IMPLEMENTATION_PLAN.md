@@ -567,7 +567,7 @@ Recorded decisions:
 - Public license: MIT.
 - Package names: `@dynt/formation`, `@dynt/kinetic`, `@dynt/react`, and `@dynt/web-components`.
 - Browser policy: current evergreen Chromium, Firefox, and WebKit engines, verified through the pinned Playwright matrix.
-- Public preview performance budget: 500-target DOM operations complete within 1000 milliseconds in the test environment; Kinetic defaults to 250 managed and 24 active surfaces.
+- Public preview performance budget: 500-target Formation operations complete within 1000 milliseconds and Kinetic operations within 2000 milliseconds in the test environment; Kinetic defaults to 250 managed and 24 active surfaces.
 - Framework delivery: React and Web Components are included; additional adapters require demonstrated demand.
 - Security reporting: private GitHub security advisories.
 - Release procedure: synchronized `0.5.0` preview packages, tagged automation, clean-package verification, provenance, and immutable-version rollback.

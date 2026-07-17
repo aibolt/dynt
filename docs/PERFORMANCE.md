@@ -4,7 +4,7 @@ DYNT's preview budgets are executable contract tests, not informal targets.
 
 ## DOM operations
 
-Formation and Kinetic each test initialization, no-change refresh, and cleanup with 500 managed surfaces. Every operation must finish within 1000 milliseconds in the test environment. This generous cross-machine ceiling is intended to catch major regressions while the implementation remains portable across development and hosted continuous-integration machines.
+Formation and Kinetic each test initialization, no-change refresh, and cleanup with 500 managed surfaces. Every Formation operation must finish within 1000 milliseconds, and every Kinetic operation within 2000 milliseconds, in the test environment. These generous cross-machine ceilings are intended to catch major regressions while the implementation remains portable across development and hosted continuous-integration machines.
 
 ## Kinetic rendering
 
