@@ -5,7 +5,8 @@ export type FormationTokenName =
   | "line-color"
   | "line-style"
   | "line-width"
-  | "overflow";
+  | "overflow"
+  | "radius";
 
 export type FormationTokens = Readonly<{
   duration?: number;
@@ -15,6 +16,7 @@ export type FormationTokens = Readonly<{
   lineStyle?: "solid" | "dashed" | "dotted" | "double";
   lineWidth?: string;
   overflow?: number;
+  radius?: string;
 }>;
 
 export type ResolvedFormationTokens = Partial<Record<FormationTokenName, string>>;
@@ -27,6 +29,7 @@ export const FORMATION_TOKEN_PROPERTIES: Readonly<Record<FormationTokenName, str
   "line-style": "--dynt-line-style",
   "line-width": "--dynt-line-width",
   overflow: "--dynt-formation-overflow",
+  radius: "--dynt-formation-radius",
 };
 
 const TOKEN_OPTION_NAMES = new Set([
@@ -37,6 +40,7 @@ const TOKEN_OPTION_NAMES = new Set([
   "lineStyle",
   "lineWidth",
   "overflow",
+  "radius",
 ]);
 
 export function normalizeFormationTokens(
@@ -128,6 +132,16 @@ export function normalizeFormationTokens(
     normalized.overflow = `${tokens.overflow}px`;
   }
 
+  if (tokens.radius !== undefined) {
+    if (!supported.has("radius")) {
+      throw new TypeError("DYNT Formation profile does not support the radius token.");
+    }
+    if (typeof tokens.radius !== "string" || !tokens.radius.trim()) {
+      throw new TypeError("DYNT Formation radius must be a non-empty string.");
+    }
+    normalized.radius = tokens.radius;
+  }
+
   return normalized;
 }
 
@@ -142,6 +156,7 @@ export function readLocalFormationTokens(
   const lineStyle = element.getAttribute("data-dynt-line-style");
   const lineWidth = element.getAttribute("data-dynt-line-width");
   const overflow = element.getAttribute("data-dynt-formation-overflow");
+  const radius = element.getAttribute("data-dynt-formation-radius");
 
   return normalizeFormationTokens({
     duration: duration === null ? undefined : Number(duration.trim() ? duration : Number.NaN),
@@ -151,6 +166,7 @@ export function readLocalFormationTokens(
     lineStyle: lineStyle === null ? undefined : lineStyle as FormationTokens["lineStyle"],
     lineWidth: lineWidth === null ? undefined : lineWidth,
     overflow: overflow === null ? undefined : Number(overflow.trim() ? overflow : Number.NaN),
+    radius: radius === null ? undefined : radius,
   }, supportedTokens, "local tokens");
 }
 

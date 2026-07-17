@@ -91,6 +91,10 @@
       <article id="line-rise-target" class="target line-rise-target">
         Line Rise surface
       </article>
+
+      <article id="arc-trace-target" class="target arc-trace-target">
+        Arc Trace surface
+      </article>
     </main>
 
     <output id="status" aria-live="polite"></output>
@@ -102,7 +106,7 @@
       const status = document.querySelector("#status");
       const linePush = createFormation({
         root: app,
-        selector: ".target:not(.line-rise-target)",
+        selector: ".target:not(.line-rise-target):not(.arc-trace-target)",
         observe: true,
         viewportFlow: {
           duration: 820,
@@ -134,7 +138,21 @@
           overflow: 10,
         },
       });
-      const formations = [linePush, lineRise];
+      const arcTrace = createFormation({
+        root: app,
+        selector: ".arc-trace-target",
+        profile: "arc-trace",
+        observe: true,
+        tokens: {
+          duration: 160,
+          fillColor: "rgb(8 24 32 / 0.92)",
+          lineColor: "#f0abfc",
+          lineStyle: "dashed",
+          lineWidth: "1px",
+          radius: "18px",
+        },
+      });
+      const formations = [linePush, lineRise, arcTrace];
 
       function renderStatus() {
         status.textContent = formations

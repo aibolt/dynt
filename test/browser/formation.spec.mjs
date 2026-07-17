@@ -49,6 +49,16 @@ test("Formation lifecycle preserves controls, focus, input, and dynamic targets"
 
   await expect(status).toContainText("section-target:formed");
   await expect(status).toContainText("line-rise-target:formed");
+  await expect(status).toContainText("arc-trace-target:formed");
+  const arcTrace = page.locator("#arc-trace-target");
+  await expect(arcTrace.locator("[data-dynt-formation-perimeter]")).toHaveAttribute(
+    "aria-hidden",
+    "true",
+  );
+  await expect(arcTrace.locator(".dynt-formation__perimeter-trace")).toHaveAttribute(
+    "pathLength",
+    "100",
+  );
   await page.getByRole("button", { name: "Withdraw all" }).click();
   await expect(status).toContainText("section-target:unformed");
   await page.getByRole("button", { name: "Form all" }).click();
@@ -57,7 +67,7 @@ test("Formation lifecycle preserves controls, focus, input, and dynamic targets"
   const input = page.getByRole("textbox", { name: "Text input" });
   await input.fill("Preserved across browsers");
   await page.getByRole("button", { name: "Add target" }).click();
-  await expect(status).toContainText("dynamic-6:formed");
+  await expect(status).toContainText("dynamic-7:formed");
   await expect(input).toHaveValue("Preserved across browsers");
   await page.getByRole("link", { name: "Focusable link" }).focus();
   await expect(page.getByRole("link", { name: "Focusable link" })).toBeFocused();

@@ -5,16 +5,22 @@ import {
 
 export type FormationTransitionHook = Readonly<{
   propertyName: string;
-  pseudoElement: "::before" | "::after";
+  pseudoElement?: "::before" | "::after";
 }>;
 
 export type FormationProfileDefinition<Name extends string = string> = Readonly<{
   name: Name;
   className: string;
-  geometry: Readonly<{
-    type: "edge-lines" | "line-forge";
-    edgeOrder: "horizontal-vertical" | "vertical-horizontal";
-  }>;
+  geometry: Readonly<
+    | {
+      type: "edge-lines" | "line-forge";
+      edgeOrder: "horizontal-vertical" | "vertical-horizontal";
+    }
+    | {
+      type: "perimeter";
+      edgeOrder: "clockwise" | "counter-clockwise";
+    }
+  >;
   tokens: readonly FormationTokenName[];
   lifecycle: Readonly<{
     formComplete: FormationTransitionHook;
@@ -23,8 +29,9 @@ export type FormationProfileDefinition<Name extends string = string> = Readonly<
   capabilities: Readonly<{
     reducedMotion: boolean;
     responsive: boolean;
+    viewportFlow?: boolean;
   }>;
-  rendering: "pseudo-elements";
+  rendering: "pseudo-elements" | "svg-perimeter";
 }>;
 
 export type FormationProfileRegistry<Name extends string = string> = Readonly<{
@@ -51,15 +58,22 @@ export function createFormationProfileRegistry<
     if (definitions.has(profile.name)) {
       throw new TypeError(`DYNT Formation received a duplicate profile: ${profile.name}.`);
     }
-    if (
-      !profile.geometry
-      || (profile.geometry.type !== "edge-lines" && profile.geometry.type !== "line-forge")
-      || (
-        profile.geometry.edgeOrder !== "horizontal-vertical"
-        && profile.geometry.edgeOrder !== "vertical-horizontal"
+    const perimeterGeometry = profile.geometry?.type === "perimeter"
+      && (
+        profile.geometry.edgeOrder === "clockwise"
+        || profile.geometry.edgeOrder === "counter-clockwise"
       )
-      || profile.rendering !== "pseudo-elements"
-    ) {
+      && profile.rendering === "svg-perimeter";
+    const edgeGeometry = (
+      profile.geometry?.type === "edge-lines"
+      || profile.geometry?.type === "line-forge"
+    )
+      && (
+        profile.geometry.edgeOrder === "horizontal-vertical"
+        || profile.geometry.edgeOrder === "vertical-horizontal"
+      )
+      && profile.rendering === "pseudo-elements";
+    if (!perimeterGeometry && !edgeGeometry) {
       throw new TypeError("DYNT Formation profiles require supported geometry and rendering metadata.");
     }
     if (
@@ -72,6 +86,10 @@ export function createFormationProfileRegistry<
       !profile.capabilities
       || typeof profile.capabilities.reducedMotion !== "boolean"
       || typeof profile.capabilities.responsive !== "boolean"
+      || (
+        profile.capabilities.viewportFlow !== undefined
+        && typeof profile.capabilities.viewportFlow !== "boolean"
+      )
     ) {
       throw new TypeError("DYNT Formation profiles require capability metadata.");
     }
@@ -81,7 +99,11 @@ export function createFormationProfileRegistry<
         !hook
         || typeof hook.propertyName !== "string"
         || !hook.propertyName.trim()
-        || (hook.pseudoElement !== "::before" && hook.pseudoElement !== "::after")
+        || (
+          hook.pseudoElement !== undefined
+          && hook.pseudoElement !== "::before"
+          && hook.pseudoElement !== "::after"
+        )
       ) {
         throw new TypeError("DYNT Formation profiles require valid lifecycle completion hooks.");
       }
@@ -142,6 +164,37 @@ const BUILTIN_PROFILES = [
       responsive: true,
     },
     rendering: "pseudo-elements",
+  },
+  {
+    name: "arc-trace",
+    className: "dynt-formation--arc-trace",
+    geometry: {
+      type: "perimeter",
+      edgeOrder: "clockwise",
+    },
+    tokens: [
+      "duration",
+      "easing",
+      "fill-color",
+      "line-color",
+      "line-style",
+      "line-width",
+      "radius",
+    ],
+    lifecycle: {
+      formComplete: {
+        propertyName: "stroke-dashoffset",
+      },
+      withdrawComplete: {
+        propertyName: "stroke-dashoffset",
+      },
+    },
+    capabilities: {
+      reducedMotion: true,
+      responsive: true,
+      viewportFlow: false,
+    },
+    rendering: "svg-perimeter",
   },
   {
     name: "line-rise",

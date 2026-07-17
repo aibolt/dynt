@@ -5,6 +5,7 @@
   --dynt-formation-easing: cubic-bezier(0.22, 1, 0.36, 1);
   --dynt-formation-fill-color: transparent;
   --dynt-formation-overflow: 14px;
+  --dynt-formation-radius: 18px;
   --dynt-line-color: currentColor;
   --dynt-line-style: solid;
   --dynt-line-width: 1px;
@@ -118,6 +119,136 @@
   100% { opacity: 0; transform: translateY(calc(var(--dynt-flow-from-bottom-distance) * -1)); }
 }
 
+:where(.dynt-formation--arc-trace) {
+  --dynt-formation-duration: 620ms;
+}
+
+:where(.dynt-formation__perimeter) {
+  background-color: transparent;
+  border-radius: var(--dynt-formation-radius);
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  position: absolute;
+  transform-origin: center;
+  transform-style: preserve-3d;
+  transition: background-color calc(var(--dynt-formation-duration) * 0.645) linear;
+  z-index: 1;
+}
+
+:where(.dynt-formation--arc-trace.dynt-kinetic) > :where(.dynt-formation__perimeter) {
+  transform: perspective(1100px) rotateX(var(--dynt-tilt-x)) rotateY(var(--dynt-tilt-y)) translateZ(0);
+  will-change: transform;
+}
+
+:where(.dynt-formation__perimeter-svg),
+:where(.dynt-formation__perimeter-rest) {
+  display: block;
+  inset: 0;
+  overflow: visible;
+  position: absolute;
+}
+
+:where(.dynt-formation__perimeter-trace) {
+  fill: none;
+  opacity: 1;
+  rx: var(--dynt-formation-radius);
+  stroke: var(--dynt-line-color);
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  stroke-linecap: round;
+  stroke-width: var(--dynt-line-width);
+  transition:
+    opacity calc(var(--dynt-formation-duration) * 0.08) linear,
+    stroke-dashoffset var(--dynt-formation-duration) var(--dynt-formation-easing);
+  vector-effect: non-scaling-stroke;
+  will-change: stroke-dashoffset;
+}
+
+:where(.dynt-formation__perimeter-rest) {
+  border: var(--dynt-line-width) var(--dynt-line-style) var(--dynt-line-color);
+  border-radius: var(--dynt-formation-radius);
+  box-sizing: border-box;
+  opacity: 0;
+  transition: opacity calc(var(--dynt-formation-duration) * 0.08) linear;
+}
+
+:where(.dynt-formation__register) {
+  height: 7px;
+  opacity: 0;
+  position: absolute;
+  transition: opacity calc(var(--dynt-formation-duration) * 0.16) var(--dynt-formation-easing);
+  width: 14px;
+}
+
+:where(.dynt-formation__register)::before,
+:where(.dynt-formation__register)::after {
+  background: var(--dynt-line-color);
+  content: "";
+  position: absolute;
+}
+
+:where(.dynt-formation__register)::before {
+  height: var(--dynt-line-width);
+  inset-inline: 0;
+}
+
+:where(.dynt-formation__register)::after {
+  height: 7px;
+  width: var(--dynt-line-width);
+}
+
+:where(.dynt-formation__register--entry) {
+  inset-block-start: -4px;
+  inset-inline-start: 20%;
+}
+
+:where(.dynt-formation__register--entry)::after {
+  inset-inline-start: 0;
+}
+
+:where(.dynt-formation__register--exit) {
+  inset-block-end: -4px;
+  inset-inline-end: 20%;
+}
+
+:where(.dynt-formation__register--exit)::before {
+  inset-block-end: 0;
+}
+
+:where(.dynt-formation__register--exit)::after {
+  inset-block-end: 0;
+  inset-inline-end: 0;
+}
+
+:where(.dynt-formation--arc-trace[data-dynt-formation-phase="constructing"] .dynt-formation__perimeter-trace),
+:where(.dynt-formation--arc-trace[data-dynt-formation-phase="enclosed"] .dynt-formation__perimeter-trace),
+:where(.dynt-formation--arc-trace[data-dynt-formation-phase="revealing"] .dynt-formation__perimeter-trace),
+:where(.dynt-formation--arc-trace[data-dynt-formation-phase="formed"] .dynt-formation__perimeter-trace),
+:where(.dynt-formation--arc-trace[data-dynt-formation-phase="withdrawing"] .dynt-formation__perimeter-trace) {
+  stroke-dashoffset: 0;
+}
+
+:where(.dynt-formation--arc-trace[data-dynt-formation-phase="enclosed"] .dynt-formation__perimeter) {
+  background-color: var(--dynt-formation-fill-color);
+}
+
+:where(.dynt-formation--arc-trace[data-dynt-formation-phase="formed"] .dynt-formation__perimeter-trace) {
+  opacity: 0;
+}
+
+:where(.dynt-formation--arc-trace[data-dynt-formation-phase="formed"] .dynt-formation__perimeter-rest),
+:where(.dynt-formation--arc-trace[data-dynt-formation-phase="formed"] .dynt-formation__register) {
+  opacity: 1;
+}
+
+:where(.dynt-formation--arc-trace[data-dynt-formation-phase="deconstructing"] .dynt-formation__perimeter-trace) {
+  stroke-dashoffset: 100;
+  transition-duration:
+    calc(var(--dynt-formation-duration) * 0.08),
+    calc(var(--dynt-formation-duration) * 0.548);
+}
+
 :where(.dynt-formation--line-push)::before,
 :where(.dynt-formation--line-push)::after,
 :where(.dynt-formation--line-rise)::before,
@@ -133,15 +264,15 @@
   z-index: 1;
 }
 
-:where(.dynt-formation.dynt-kinetic)::before,
-:where(.dynt-formation.dynt-kinetic)::after {
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic)::before,
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic)::after {
   transform: perspective(1100px) rotateX(var(--dynt-tilt-x)) rotateY(var(--dynt-tilt-y)) translateZ(0);
   transform-origin: center;
   transform-style: preserve-3d;
   will-change: clip-path, transform;
 }
 
-.dynt-formation.dynt-kinetic :where(.dynt-kinetic__corner) {
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic) :where(.dynt-kinetic__corner) {
   display: block;
   height: 0;
   opacity: 0;
@@ -152,74 +283,74 @@
   z-index: 1;
 }
 
-:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner)::before,
-:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner)::after {
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic) :where(.dynt-kinetic__corner)::before,
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic) :where(.dynt-kinetic__corner)::after {
   box-sizing: border-box;
   content: "";
   pointer-events: none;
   position: absolute;
 }
 
-:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner)::before {
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic) :where(.dynt-kinetic__corner)::before {
   border-block-start: var(--dynt-line-width) var(--dynt-line-style) var(--dynt-line-color);
   width: var(--dynt-corner-overflow);
 }
 
-:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner)::after {
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic) :where(.dynt-kinetic__corner)::after {
   border-inline-start: var(--dynt-line-width) var(--dynt-line-style) var(--dynt-line-color);
   height: var(--dynt-corner-overflow);
 }
 
-:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--tl) {
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic) :where(.dynt-kinetic__corner--tl) {
   --dynt-corner-overflow: var(--dynt-tl-overflow);
   inset-block-start: 0;
   inset-inline-start: 0;
 }
 
-:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--tr) {
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic) :where(.dynt-kinetic__corner--tr) {
   --dynt-corner-overflow: var(--dynt-tr-overflow);
   inset-block-start: 0;
   inset-inline-end: 0;
 }
 
-:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--bl) {
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic) :where(.dynt-kinetic__corner--bl) {
   --dynt-corner-overflow: var(--dynt-bl-overflow);
   inset-block-end: 0;
   inset-inline-start: 0;
 }
 
-:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--br) {
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic) :where(.dynt-kinetic__corner--br) {
   --dynt-corner-overflow: var(--dynt-br-overflow);
   inset-block-end: 0;
   inset-inline-end: 0;
 }
 
-:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--tl)::before,
-:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--bl)::before {
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic) :where(.dynt-kinetic__corner--tl)::before,
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic) :where(.dynt-kinetic__corner--bl)::before {
   inset-inline-end: 0;
 }
 
-:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--tr)::before,
-:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--br)::before {
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic) :where(.dynt-kinetic__corner--tr)::before,
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic) :where(.dynt-kinetic__corner--br)::before {
   inset-inline-start: 0;
 }
 
-:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--tl)::after,
-:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--tr)::after {
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic) :where(.dynt-kinetic__corner--tl)::after,
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic) :where(.dynt-kinetic__corner--tr)::after {
   inset-block-end: 0;
 }
 
-:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--bl)::after,
-:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--br)::after {
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic) :where(.dynt-kinetic__corner--bl)::after,
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic) :where(.dynt-kinetic__corner--br)::after {
   inset-block-start: 0;
 }
 
-.dynt-formation.dynt-kinetic[data-dynt-formation-phase="constructing"] :where(.dynt-kinetic__corner),
-.dynt-formation.dynt-kinetic[data-dynt-formation-phase="enclosed"] :where(.dynt-kinetic__corner),
-.dynt-formation.dynt-kinetic[data-dynt-formation-phase="revealing"] :where(.dynt-kinetic__corner),
-.dynt-formation.dynt-kinetic[data-dynt-formation-phase="formed"] :where(.dynt-kinetic__corner),
-.dynt-formation.dynt-kinetic[data-dynt-formation-phase="withdrawing"] :where(.dynt-kinetic__corner),
-.dynt-formation.dynt-kinetic[data-dynt-formation-phase="deconstructing"] :where(.dynt-kinetic__corner) {
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic)[data-dynt-formation-phase="constructing"] :where(.dynt-kinetic__corner),
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic)[data-dynt-formation-phase="enclosed"] :where(.dynt-kinetic__corner),
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic)[data-dynt-formation-phase="revealing"] :where(.dynt-kinetic__corner),
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic)[data-dynt-formation-phase="formed"] :where(.dynt-kinetic__corner),
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic)[data-dynt-formation-phase="withdrawing"] :where(.dynt-kinetic__corner),
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic)[data-dynt-formation-phase="deconstructing"] :where(.dynt-kinetic__corner) {
   opacity: 1;
 }
 
@@ -237,8 +368,8 @@
   inset-inline: 0;
 }
 
-:where(.dynt-formation.dynt-kinetic)::before,
-:where(.dynt-formation.dynt-kinetic)::after {
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic)::before,
+:where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic)::after {
   inset: 0;
 }
 
@@ -310,8 +441,13 @@
     transition-duration: 1ms;
   }
 
-  :where(.dynt-formation.dynt-kinetic)::before,
-  :where(.dynt-formation.dynt-kinetic)::after {
+  :where(.dynt-formation__perimeter-trace) {
+    transition-duration: 1ms;
+  }
+
+  :where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic)::before,
+  :where(.dynt-formation--line-push.dynt-kinetic, .dynt-formation--line-rise.dynt-kinetic)::after,
+  :where(.dynt-formation--arc-trace.dynt-kinetic) > :where(.dynt-formation__perimeter) {
     transform: none;
   }
 }

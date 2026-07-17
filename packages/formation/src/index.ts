@@ -106,6 +106,7 @@ type FormationOwner = {
 
 type ElementOwnership = {
   cancelInitialForm?: () => void;
+  decoration: HTMLElement | null;
   owners: Set<FormationOwner>;
   ownerTokens: Map<FormationOwner, ResolvedFormationTokens>;
   managedTokenProperties: Set<FormationTokenName>;
@@ -117,7 +118,9 @@ type ElementOwnership = {
 const BASE_CLASS = "dynt-formation";
 const DEFAULT_EXCLUDE_SELECTOR = "[data-dynt-ignore]";
 const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
+const PERIMETER_ATTRIBUTE = "data-dynt-formation-perimeter";
 const PHASE_ATTRIBUTE = "data-dynt-formation-phase";
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 export const FORMATION_PHASE_EVENT = "dynt:formation-phase";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const ELEMENT_OWNERSHIP = new WeakMap<HTMLElement, ElementOwnership>();
@@ -405,6 +408,43 @@ function findTargets(root: FormationRoot, selector: string, excludeSelector: str
   return targets;
 }
 
+function createPerimeterDecoration(element: HTMLElement) {
+  const layer = element.ownerDocument.createElement("span");
+  const svg = element.ownerDocument.createElementNS(SVG_NAMESPACE, "svg");
+  const trace = element.ownerDocument.createElementNS(SVG_NAMESPACE, "rect");
+  const restingFrame = element.ownerDocument.createElement("span");
+  const entryRegister = element.ownerDocument.createElement("span");
+  const exitRegister = element.ownerDocument.createElement("span");
+
+  layer.className = "dynt-formation__perimeter";
+  layer.setAttribute(PERIMETER_ATTRIBUTE, "");
+  layer.setAttribute("aria-hidden", "true");
+  svg.classList.add("dynt-formation__perimeter-svg");
+  svg.setAttribute("width", "100%");
+  svg.setAttribute("height", "100%");
+  svg.setAttribute("preserveAspectRatio", "none");
+  trace.classList.add("dynt-formation__perimeter-trace");
+  trace.setAttribute("x", "0");
+  trace.setAttribute("y", "0");
+  trace.setAttribute("width", "100%");
+  trace.setAttribute("height", "100%");
+  trace.setAttribute("pathLength", "100");
+  restingFrame.className = "dynt-formation__perimeter-rest";
+  entryRegister.className = "dynt-formation__register dynt-formation__register--entry";
+  exitRegister.className = "dynt-formation__register dynt-formation__register--exit";
+  svg.append(trace);
+  layer.append(svg, restingFrame, entryRegister, exitRegister);
+  element.append(layer);
+  return layer;
+}
+
+function ensureDecoration(element: HTMLElement, ownership: ElementOwnership) {
+  if (ownership.profile.rendering !== "svg-perimeter") return;
+  if (ownership.decoration?.parentElement === element) return;
+  ownership.decoration?.remove();
+  ownership.decoration = createPerimeterDecoration(element);
+}
+
 export function createFormation<ProfileName extends string = FormationProfile>({
   root,
   selector,
@@ -443,6 +483,9 @@ export function createFormation<ProfileName extends string = FormationProfile>({
   let rootTokens = normalizeFormationTokens(tokens, selectedProfile.tokens);
   let selectorGroups = normalizeSelectorGroups(root, groups, selectedProfile.tokens);
   let resolvedViewportFlow = normalizeFormationViewportFlow(viewportFlow);
+  if (resolvedViewportFlow.enabled && selectedProfile.capabilities.viewportFlow === false) {
+    throw new TypeError(`DYNT Formation profile ${selectedProfile.name} does not support viewportFlow.`);
+  }
   const elements = new Set<HTMLElement>();
   const owner: FormationOwner = { listeners: new Set() };
   const document = root.nodeType === 9 ? root as Document : root.ownerDocument;
@@ -581,6 +624,7 @@ export function createFormation<ProfileName extends string = FormationProfile>({
       if (ownership) {
         ownership.ownerTokens.set(owner, resolvedTokens);
         applyEffectiveTokens(element, ownership);
+        ensureDecoration(element, ownership);
       }
       return false;
     }
@@ -594,6 +638,7 @@ export function createFormation<ProfileName extends string = FormationProfile>({
       existingOwnership.ownerTokens.set(owner, resolvedTokens);
       elements.add(element);
       applyEffectiveTokens(element, existingOwnership);
+      ensureDecoration(element, existingOwnership);
       return true;
     }
 
@@ -605,6 +650,7 @@ export function createFormation<ProfileName extends string = FormationProfile>({
       tokenStyles: snapshotTokenStyles(element),
     };
     const ownership: ElementOwnership = {
+      decoration: null,
       managedTokenProperties: new Set(),
       owners: new Set([owner]),
       ownerTokens: new Map([[owner, resolvedTokens]]),
@@ -619,6 +665,7 @@ export function createFormation<ProfileName extends string = FormationProfile>({
     element.setAttribute("data-dynt-formation", selectedProfile.name);
     element.setAttribute(PHASE_ATTRIBUTE, "unformed");
     applyEffectiveTokens(element, ownership);
+    ensureDecoration(element, ownership);
     if (!resolvedViewportFlow.enabled) scheduleInitialForm(element, ownership, view);
     return true;
   }
@@ -659,6 +706,8 @@ export function createFormation<ProfileName extends string = FormationProfile>({
     }
 
     cancelInitialForm(ownership);
+    ownership.decoration?.remove();
+    ownership.decoration = null;
     restore(element, ownership.snapshot);
     ELEMENT_OWNERSHIP.delete(element);
   }
@@ -688,7 +737,11 @@ export function createFormation<ProfileName extends string = FormationProfile>({
 
   function handleTransitionEnd(event: Event) {
     const transition = event as TransitionEvent;
-    const element = event.target as HTMLElement | null;
+    const eventTarget = event.target as Element | null;
+    const perimeter = eventTarget?.closest?.(`[${PERIMETER_ATTRIBUTE}]`);
+    const element = eventTarget && elements.has(eventTarget as HTMLElement)
+      ? eventTarget as HTMLElement
+      : perimeter?.parentElement ?? null;
     if (
       !element
       || element.nodeType !== 1
@@ -706,13 +759,19 @@ export function createFormation<ProfileName extends string = FormationProfile>({
     if (
       ownership.phase === "constructing"
       && transition.propertyName === formComplete.propertyName
-      && transition.pseudoElement === formComplete.pseudoElement
+      && (
+        formComplete.pseudoElement === undefined
+        || transition.pseudoElement === formComplete.pseudoElement
+      )
     ) {
       advanceToTerminal(element, ownership, "form", "formed");
     } else if (
       ownership.phase === "deconstructing"
       && transition.propertyName === withdrawComplete.propertyName
-      && transition.pseudoElement === withdrawComplete.pseudoElement
+      && (
+        withdrawComplete.pseudoElement === undefined
+        || transition.pseudoElement === withdrawComplete.pseudoElement
+      )
     ) {
       setFormationPhase(
         element,
@@ -830,6 +889,9 @@ export function createFormation<ProfileName extends string = FormationProfile>({
     const nextViewportFlow = options.viewportFlow === undefined
       ? resolvedViewportFlow
       : normalizeFormationViewportFlow(options.viewportFlow);
+    if (nextViewportFlow.enabled && selectedProfile.capabilities.viewportFlow === false) {
+      throw new TypeError(`DYNT Formation profile ${selectedProfile.name} does not support viewportFlow.`);
+    }
     const disabledActiveFlow = resolvedViewportFlow.enabled && !nextViewportFlow.enabled;
 
     rootTokens = nextRootTokens;
