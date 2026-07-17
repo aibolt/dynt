@@ -1,0 +1,52 @@
+:where(.dynt-formation) {
+  --dynt-line-color: currentColor;
+  --dynt-line-width: 1px;
+  --dynt-formation-duration: 420ms;
+  isolation: isolate;
+  position: relative;
+}
+
+:where(.dynt-formation--line-push)::before,
+:where(.dynt-formation--line-push)::after {
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
+:where(.dynt-formation--line-push)::before {
+  border-block: var(--dynt-line-width) solid var(--dynt-line-color);
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: dynt-line-push-x var(--dynt-formation-duration) ease-out forwards;
+}
+
+:where(.dynt-formation--line-push)::after {
+  border-inline: var(--dynt-line-width) solid var(--dynt-line-color);
+  transform: scaleY(0);
+  transform-origin: top;
+  animation: dynt-line-push-y var(--dynt-formation-duration) ease-out forwards;
+  animation-delay: calc(var(--dynt-formation-duration) * 0.35);
+}
+
+@keyframes dynt-line-push-x {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes dynt-line-push-y {
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.dynt-formation--line-push)::before,
+  :where(.dynt-formation--line-push)::after {
+    animation-duration: 1ms;
+    animation-delay: 0ms;
+  }
+}
+

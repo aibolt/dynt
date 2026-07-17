@@ -11,7 +11,7 @@ Applications will be able to install either package independently or combine bot
 
 ## Status
 
-DYNT is in foundation development. The existing AXIS experiments are reference material only; this repository is a clean implementation built incrementally around a stable public API.
+DYNT is in foundation development and is being built incrementally around a stable public API.
 
 ## Development order
 
@@ -22,4 +22,3 @@ DYNT is in foundation development. The existing AXIS experiments are reference m
 5. Add React and other framework adapters without coupling the engines to a framework.
 
 See [the architecture](docs/ARCHITECTURE.md) and [the roadmap](docs/ROADMAP.md).
-

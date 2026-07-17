@@ -10,10 +10,10 @@
 
 ## Phase 1 — Formation minimum viable engine
 
-- [ ] Implement `@dynt/formation` with one Line Push profile.
-- [ ] Enhance elements through root and selector configuration.
+- [x] Implement the first `@dynt/formation` Line Push slice.
+- [x] Enhance existing elements through root and selector configuration.
 - [ ] Support existing and dynamically inserted elements.
-- [ ] Return a controller with refresh and destroy operations.
+- [x] Return a controller with refresh and destroy operations.
 - [ ] Preserve original element semantics and focus behavior.
 - [ ] Verify construction and reverse deconstruction.
 
@@ -50,4 +50,3 @@
 - [ ] Add migration, API, and integration documentation.
 - [ ] Add examples for existing HTML and supported frameworks.
 - [ ] Require reviewed pull requests for protected branches.
-
