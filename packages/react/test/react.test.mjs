@@ -58,7 +58,6 @@ test("Kinetic hook tolerates React updates and removes its decoration", async ()
       selector: ".surface",
       observe: true,
       cells: { shape: "diamond", size: [40, 32, 24] },
-      field: { idleDelay: 120, radius: 3 },
       flow: { overflow: 14, turbulence: 0.4 },
     });
     return createElement(

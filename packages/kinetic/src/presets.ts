@@ -1,7 +1,6 @@
 import type {
   KineticCells,
   KineticEffects,
-  KineticField,
   KineticFlow,
   KineticMotion,
 } from "./index.js";
@@ -9,7 +8,6 @@ import type {
 export type KineticPreset = Readonly<{
   cells: KineticCells;
   effects: KineticEffects;
-  field: KineticField;
   flow: KineticFlow;
   motion: KineticMotion;
 }>;
@@ -26,17 +24,8 @@ export const kineticPresets = Object.freeze({
     effects: Object.freeze({
       content: true,
       drift: true,
-      pressure: true,
       tilt: true,
       wave: true,
-    }),
-    field: Object.freeze({
-      idleDelay: 120,
-      intensity: 1,
-      maxCells: 61,
-      noise: 0.18,
-      radius: 3,
-      tail: 1.55,
     }),
     flow: Object.freeze({
       growth: 0.82,
@@ -69,17 +58,8 @@ export const kineticPresets = Object.freeze({
     effects: Object.freeze({
       content: true,
       drift: false,
-      pressure: true,
       tilt: true,
       wave: true,
-    }),
-    field: Object.freeze({
-      idleDelay: 120,
-      intensity: 1.35,
-      maxCells: 61,
-      noise: 0.22,
-      radius: 3,
-      tail: 1.55,
     }),
     flow: Object.freeze({
       growth: 1,

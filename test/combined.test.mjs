@@ -105,7 +105,6 @@ test("combined mode coordinates through DOM state in either initialization order
 
     formation.withdraw(button);
     assert.equal(frames.count, 0);
-    assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.0000");
     assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
 
     kinetic.destroy();
@@ -140,6 +139,6 @@ test("destroying either engine leaves the other engine intact", () => {
     assert.equal(button.hasAttribute("data-dynt-formation"), false);
     assert.equal(button.hasAttribute("data-dynt-kinetic"), false);
     assert.equal(button.querySelectorAll("[data-dynt-kinetic-layer]").length, 0);
-    assert.equal(button.style.getPropertyValue("--dynt-pressure"), "");
+    assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "");
   }
 });

@@ -113,7 +113,7 @@
       function renderStatus() {
         status.textContent = formation.elements
           .map((element) => (
-            `${element.id}:${element.dataset.dyntFormationPhase}:${element.style.getPropertyValue("--dynt-pressure")}:${element.style.getPropertyValue("--dynt-tilt-y")}`
+            `${element.id}:${element.dataset.dyntFormationPhase}:${element.style.getPropertyValue("--dynt-tilt-y")}`
           ))
           .join("\n");
       }

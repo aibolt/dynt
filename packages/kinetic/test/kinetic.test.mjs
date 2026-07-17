@@ -138,9 +138,9 @@ test("an explicitly supplied shadow root owns input within its boundary", () => 
   setRectangle(inside);
   const controller = createKinetic({ root: shadowRoot, selector: "button" });
 
-  dispatchPointer(window, inside, "pointermove", { pressure: 0.8 });
+  dispatchPointer(window, inside, "pointermove", { clientX: 100, pressure: 0.8 });
   frames.runNext();
-  assert.ok(Number.parseFloat(inside.style.getPropertyValue("--dynt-pressure")) > 0);
+  assert.notEqual(inside.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
   assert.equal(document.querySelector("#outside").hasAttribute("data-dynt-kinetic"), false);
 
   controller.destroy();
@@ -188,7 +188,6 @@ test("canvas cells preserve geometry, nesting depth, local overrides, and wave f
       shape: "square",
       size: [40, 32, 24],
     },
-    field: { maxCells: 61, radius: 3 },
     flow: { multi: true, maxWaves: 3, overflow: 14, turbulence: 0.4 },
     motion: { response: 1, waveDuration: 100 },
   });
@@ -203,14 +202,16 @@ test("canvas cells preserve geometry, nesting depth, local overrides, and wave f
 
   dispatchPointer(window, button, "pointermove", { clientX: 120, clientY: 80 });
   frames.runNext();
-  assert.ok(Number(canvases[2].dataset.dyntFieldCells) > 0);
-  assert.ok(operations.includes("lineTo"));
+  assert.equal(canvases[2].dataset.dyntFlowCells, "0");
+  assert.equal(canvases[2].hasAttribute("data-dynt-field-cells"), false);
 
   dispatchPointer(window, button, "pointerdown", { clientX: 60, clientY: 60 });
   dispatchPointer(window, button, "pointerdown", { clientX: 160, clientY: 100 });
   frames.runNext();
   assert.equal(canvases[2].dataset.dyntFlowWaves, "2");
   assert.ok(Number(canvases[2].dataset.dyntFlowCells) > 0);
+  assert.equal(canvases[2].dataset.dyntFlowModel, "radial-turbulent");
+  assert.ok(operations.includes("lineTo"));
 
   controller.update({ cells: { shape: "diamond", size: 18 } });
   assert.equal(canvases[2].dataset.dyntCellShape, "hexagon");
@@ -239,7 +240,7 @@ test("built-in presets remain immutable and directly consumable by the core engi
   controller.destroy();
 });
 
-test("the local pressure field suppresses itself after pointer stillness", async () => {
+test("pointer hover does not render cells and click starts the circular wave", () => {
   const window = new Window();
   installCanvasContext(window);
   const frames = installAnimationFrames(window);
@@ -250,18 +251,20 @@ test("the local pressure field suppresses itself after pointer stillness", async
   const controller = createKinetic({
     root: document.querySelector("main"),
     selector: "article",
-    field: { idleDelay: 40 },
+    effects: { wave: true },
     motion: { response: 1 },
   });
 
   dispatchPointer(window, article, "pointermove", { clientX: 120, clientY: 80 });
   frames.runNext();
-  assert.ok(Number(article.querySelector("canvas").dataset.dyntFieldCells) > 0);
+  const canvas = article.querySelector("canvas");
+  assert.equal(canvas.dataset.dyntFlowCells, "0");
+  assert.equal(canvas.hasAttribute("data-dynt-field-cells"), false);
 
-  await new Promise((resolve) => window.setTimeout(resolve, 55));
-  frames.runNext();
-  assert.equal(article.style.getPropertyValue("--dynt-pressure"), "0.0000");
-  assert.equal(article.querySelector("canvas").dataset.dyntFieldCells, "0");
+  dispatchPointer(window, article, "pointerdown", { clientX: 120, clientY: 80 });
+  for (let frameCount = 0; frameCount < 4; frameCount += 1) frames.runNext();
+  assert.ok(Number(canvas.dataset.dyntFlowCells) > 0);
+  assert.equal(canvas.dataset.dyntFlowModel, "radial-turbulent");
   controller.destroy();
 });
 
@@ -368,7 +371,7 @@ test("semantic reactors follow the most specific shared controller", () => {
   outer.destroy();
 });
 
-test("delegated pointer input writes bounded pressure and tilt then becomes idle", () => {
+test("delegated pointer input writes bounded tilt then becomes idle", () => {
   const window = new Window();
   const frames = installAnimationFrames(window);
   const document = window.document;
@@ -388,7 +391,6 @@ test("delegated pointer input writes bounded pressure and tilt then becomes idle
 
   assert.equal(button.style.getPropertyValue("--dynt-pointer-x"), "100.00%");
   assert.equal(button.style.getPropertyValue("--dynt-pointer-y"), "50.00%");
-  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.2929");
   assert.equal(button.style.getPropertyValue("--dynt-tilt-x"), "0.000deg");
   assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "1.350deg");
   assert.equal(frames.count, 0);
@@ -400,11 +402,11 @@ test("delegated pointer input writes bounded pressure and tilt then becomes idle
     pressure: 0.8,
   });
   frames.runNext();
-  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.8000");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-x"), "1.350deg");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "-1.350deg");
 
   dispatchPointer(window, main, "pointerleave");
   frames.runNext();
-  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.0000");
   assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
 
   controller.destroy();
@@ -467,7 +469,7 @@ test("tilt moves semantic content inside the engine-owned plate", () => {
   const controller = createKinetic({
     root: document.querySelector("main"),
     selector: ".surface",
-    effects: { content: true, pressure: false },
+    effects: { content: true },
     motion: { contentTravel: 12, response: 1 },
   });
 
@@ -583,16 +585,15 @@ test("pause and update control input without rebuilding targets", () => {
   assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
 
   controller.resume();
-  controller.update({ effects: { pressure: false }, motion: { maxTilt: 12 } });
+  controller.update({ motion: { maxTilt: 12 } });
   dispatchPointer(window, button, "pointermove", { clientX: 100 });
   frames.runNext();
-  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.0000");
   assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "12.000deg");
   assert.deepEqual(controller.elements, [button]);
   controller.destroy();
 });
 
-test("reduced motion preserves pressure without scheduling tilt", () => {
+test("reduced motion suppresses pointer tilt without scheduling frames", () => {
   const window = new Window();
   const frames = installAnimationFrames(window);
   window.matchMedia = () => ({ matches: true });
@@ -608,7 +609,6 @@ test("reduced motion preserves pressure without scheduling tilt", () => {
   dispatchPointer(window, button, "pointermove", { clientX: 50, clientY: 50 });
 
   assert.equal(frames.count, 0);
-  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "1.0000");
   assert.equal(button.style.getPropertyValue("--dynt-tilt-x"), "0.000deg");
   assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
   controller.destroy();
@@ -660,7 +660,7 @@ test("surface and active-reaction limits are enforced deterministically", () => 
   controller.impact(buttons[0]);
   controller.impact(buttons[1]);
   assert.equal(frames.count, 1);
-  assert.equal(buttons[0].style.getPropertyValue("--dynt-pressure"), "0.0000");
+  assert.equal(buttons[0].style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
 
   controller.update({ limits: { maxActive: 2, maxSurfaces: 3 } });
   assert.deepEqual(controller.elements.map((element) => element.id), ["one", "two", "three"]);
@@ -784,7 +784,6 @@ test("impact produces one bounded rebound and content response channel", () => {
   controller.impact(inside, { pressure: 0.8, x: 0.5, y: -0.5 });
   assert.equal(frames.count, 1);
   frames.runNext();
-  assert.equal(Number(inside.style.getPropertyValue("--dynt-pressure")) > 0, true);
   assert.equal(inside.style.getPropertyValue("--dynt-content-x"), "0.750px");
   assert.equal(inside.style.getPropertyValue("--dynt-content-y"), "-0.750px");
 
@@ -794,7 +793,6 @@ test("impact produces one bounded rebound and content response channel", () => {
     frameCount += 1;
   }
   assert.equal(frames.count, 0);
-  assert.equal(inside.style.getPropertyValue("--dynt-pressure"), "0.0000");
   assert.equal(inside.style.getPropertyValue("--dynt-content-x"), "0.000px");
   assert.throws(
     () => controller.impact(document.querySelector("#outside")),
@@ -807,7 +805,7 @@ test("impact produces one bounded rebound and content response channel", () => {
   controller.destroy();
 });
 
-test("reduced-motion impact uses a static cue without animation frames", async () => {
+test("reduced-motion impact remains at rest without animation frames", () => {
   const window = new Window();
   const frames = installAnimationFrames(window);
   window.matchMedia = () => ({ matches: true });
@@ -821,9 +819,8 @@ test("reduced-motion impact uses a static cue without animation frames", async (
 
   controller.impact(button);
   assert.equal(frames.count, 0);
-  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "1.0000");
-  await new Promise((resolve) => window.setTimeout(resolve, 140));
-  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.0000");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-x"), "0.000deg");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
   controller.destroy();
 });
 
@@ -832,7 +829,7 @@ test("destroy restores application motion properties exactly", () => {
   const document = window.document;
   document.body.innerHTML = "<main><button>Button</button></main>";
   const button = document.querySelector("button");
-  button.style.setProperty("--dynt-pressure", "0.4", "important");
+  button.style.setProperty("--application-depth", "0.4", "important");
   button.style.setProperty("--dynt-tl-overflow", "7px", "important");
   const controller = createKinetic({
     root: document.querySelector("main"),
@@ -841,8 +838,8 @@ test("destroy restores application motion properties exactly", () => {
 
   controller.destroy();
 
-  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.4");
-  assert.equal(button.style.getPropertyPriority("--dynt-pressure"), "important");
+  assert.equal(button.style.getPropertyValue("--application-depth"), "0.4");
+  assert.equal(button.style.getPropertyPriority("--application-depth"), "important");
   assert.equal(button.style.getPropertyValue("--dynt-tl-overflow"), "7px");
   assert.equal(button.style.getPropertyPriority("--dynt-tl-overflow"), "important");
   assert.equal(button.style.getPropertyValue("--dynt-tilt-x"), "");
@@ -887,7 +884,11 @@ test("pause, resume, destroy, and input validation are idempotent", () => {
       selector: "button",
       effects: { pressure: "yes" },
     }),
-    /effects must be boolean values/,
+    /unknown effect: pressure/,
+  );
+  assert.throws(
+    () => createKinetic({ root: document, selector: "button", field: {} }),
+    /unknown option: field/,
   );
   assert.throws(
     () => createKinetic({
@@ -928,14 +929,6 @@ test("pause, resume, destroy, and input validation are idempotent", () => {
       cells: { size: [40, 20] },
     }),
     /three-level size tree/,
-  );
-  assert.throws(
-    () => createKinetic({
-      root: document,
-      selector: "button",
-      field: { maxCells: 0 },
-    }),
-    /field maxCells must be an integer between 1 and 256/,
   );
   assert.throws(
     () => createKinetic({

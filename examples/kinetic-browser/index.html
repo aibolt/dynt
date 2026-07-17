@@ -116,7 +116,7 @@
             const canvas = Array.from(element.children)
               .find((child) => child.hasAttribute("data-dynt-kinetic-layer"))
               ?.querySelector("canvas");
-            return `${element.id}:${style.getPropertyValue("--dynt-pressure")}:${style.getPropertyValue("--dynt-tilt-y")}:${canvas?.dataset.dyntCellShape ?? "none"}:${canvas?.dataset.dyntCellSize ?? "none"}`;
+            return `${element.id}:${style.getPropertyValue("--dynt-tilt-y")}:${canvas?.dataset.dyntCellShape ?? "none"}:${canvas?.dataset.dyntCellSize ?? "none"}:${canvas?.dataset.dyntFlowCells ?? "0"}`;
           })
           .join("\n");
       }

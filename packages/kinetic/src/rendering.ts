@@ -16,15 +16,6 @@ export type ResolvedCellConfiguration = Readonly<{
   sizes: readonly [number, number, number];
 }>;
 
-export type ResolvedFieldConfiguration = Readonly<{
-  idleDelay: number;
-  intensity: number;
-  maxCells: number;
-  noise: number;
-  radius: number;
-  tail: number;
-}>;
-
 export type ResolvedFlowConfiguration = Readonly<{
   growth: number;
   intensity: number;
@@ -43,22 +34,19 @@ export type ResolvedFlowConfiguration = Readonly<{
 
 export type KineticFlowFrame = Readonly<{
   progress: number;
+  seed: number;
+  strength: number;
   x: number;
   y: number;
 }>;
 
 export type KineticRenderState = Readonly<{
   flows: readonly KineticFlowFrame[];
-  pressure: number;
-  x: number;
-  y: number;
 }>;
 
 export type KineticRenderConfiguration = Readonly<{
   cells: ResolvedCellConfiguration;
-  field: ResolvedFieldConfiguration;
   flow: ResolvedFlowConfiguration;
-  pressure: boolean;
   wave: boolean;
 }>;
 
@@ -217,24 +205,6 @@ function localColors(
   return sources.map(parseColor).filter((color): color is Rgb => color !== null);
 }
 
-function terminalCell(
-  cell: KineticCell,
-  width: number,
-  height: number,
-  directionX: number,
-  directionY: number,
-) {
-  const inside = cell.x >= 0 && cell.x <= width && cell.y >= 0 && cell.y <= height;
-  if (inside) return true;
-  const correctX = cell.x >= 0 && cell.x <= width
-    || directionX < 0 && cell.x < 0
-    || directionX > 0 && cell.x > width;
-  const correctY = cell.y >= 0 && cell.y <= height
-    || directionY < 0 && cell.y < 0
-    || directionY > 0 && cell.y > height;
-  return correctX && correctY;
-}
-
 export function renderKineticCanvas(
   canvas: HTMLCanvasElement | null,
   element: HTMLElement,
@@ -270,8 +240,6 @@ export function renderKineticCanvas(
   const shape = localShape(element, configuration.cells.shape);
   const size = localSize(element, configuration.cells.sizes);
   const colors = localColors(element, configuration.cells);
-  const fieldOriginX = (state.x + 1) * width / 2;
-  const fieldOriginY = (state.y + 1) * height / 2;
   const baseCells = createCellGeometry({
     gap: configuration.cells.gap,
     height,
@@ -280,50 +248,11 @@ export function renderKineticCanvas(
     size,
     width,
   });
-  let fieldCount = 0;
   let flowCount = 0;
-
-  if (configuration.pressure && state.pressure > 0.008) {
-    const radius = configuration.field.radius * size;
-    const active = baseCells
-      .map((cell) => ({
-        cell,
-        distance: Math.hypot(cell.x - fieldOriginX, cell.y - fieldOriginY),
-      }))
-      .filter(({ cell, distance }) => (
-        cell.x >= 0
-        && cell.x <= width
-        && cell.y >= 0
-        && cell.y <= height
-        && distance <= radius
-      ))
-      .sort((left, right) => left.distance - right.distance)
-      .slice(0, configuration.field.maxCells)
-      .reverse();
-
-    for (const { cell, distance } of active) {
-      const falloff = clamp(1 - distance / radius) ** configuration.field.tail;
-      const grain = 1 + (cellNoise(cell.row, cell.column, configuration.flow.seed) - 0.5)
-        * configuration.field.noise * 0.3;
-      const intensity = clamp(falloff * grain * state.pressure * configuration.field.intensity);
-      const scale = shape === "hexagon" || shape === "diamond" ? 1 : 0.9 + intensity * 0.1;
-      drawCell(
-        context,
-        cell,
-        shape,
-        colorAt(colors, configuration.cells.colorMode, intensity),
-        0.18 + intensity * 0.72,
-        scale,
-        overflow,
-        overflow - intensity * size * 0.035,
-      );
-      fieldCount += 1;
-    }
-  }
 
   if (configuration.wave && state.flows.length > 0) {
     const waveBudget = Math.max(1, Math.floor(configuration.flow.maxCells / state.flows.length));
-    for (const [waveIndex, wave] of state.flows.entries()) {
+    for (const wave of state.flows) {
       const originX = (wave.x + 1) * width / 2;
       const originY = (wave.y + 1) * height / 2;
       const oppositeX = wave.x < 0 ? width : 0;
@@ -333,9 +262,14 @@ export function renderKineticCanvas(
       const vectorLength = Math.max(1, Math.hypot(vectorX, vectorY));
       const directionX = vectorX / vectorLength;
       const directionY = vectorY / vectorLength;
-      const band = clamp(configuration.flow.thickness * size / vectorLength, 0.025, 0.24);
-      const seed = configuration.flow.seed
-        + (configuration.flow.seedLocked ? 0 : waveIndex * 97);
+      const sectionCapacity = clamp((Math.min(width, height) - 180) / 260);
+      const travelCapacity = clamp((vectorLength - 180) / 520);
+      const calculatedSpill = overflow * sectionCapacity * travelCapacity;
+      const terminalSpill = calculatedSpill >= 1 ? calculatedSpill : 0;
+      const maximumRadius = vectorLength + terminalSpill;
+      const waveRadius = wave.progress * maximumRadius;
+      const frontWidth = Math.max(size * 0.5, configuration.flow.thickness * size);
+      const recoveryWidth = frontWidth * (0.6 + configuration.flow.recovery * 1.4);
       const candidates: Array<{
         cell: KineticCell;
         distance: number;
@@ -344,32 +278,53 @@ export function renderKineticCanvas(
       }> = [];
 
       for (const cell of baseCells) {
-        if (!terminalCell(cell, width, height, directionX, directionY)) continue;
+        const outsideX = cell.x < 0 ? -cell.x : Math.max(0, cell.x - width);
+        const outsideY = cell.y < 0 ? -cell.y : Math.max(0, cell.y - height);
+        if (outsideX > 0 || outsideY > 0) {
+          const terminalX = directionX > 0 ? cell.x > width : cell.x < 0;
+          const terminalY = directionY > 0 ? cell.y > height : cell.y < 0;
+          if (
+            terminalSpill === 0
+            || (!terminalX && !terminalY)
+            || Math.max(outsideX, outsideY) > terminalSpill
+          ) {
+            continue;
+          }
+        }
         const dx = cell.x - originX;
         const dy = cell.y - originY;
         const distance = Math.hypot(dx, dy);
         const projection = clamp((dx * directionX + dy * directionY) / vectorLength);
-        const radial = clamp(distance / vectorLength);
         const noise = coherentCellNoise(
           cell.row,
           cell.column,
-          seed,
+          wave.seed,
           configuration.flow.turbulenceScale,
         );
-        const travel = clamp(
-          projection * 0.82
-          + radial * 0.18
-          + noise * configuration.flow.turbulence * 0.08,
+        const grain = cellNoise(cell.row, cell.column, wave.seed + 31);
+        const distortedDistance = Math.max(
+          0,
+          distance + noise * size * configuration.flow.turbulence * 3.6,
         );
-        const frontDistance = Math.abs(travel - wave.progress);
-        if (frontDistance > band) continue;
-        const crest = 1 - frontDistance / band;
-        const recovery = (1 - wave.progress) ** (0.35 / configuration.flow.recovery);
+        const distortedProjection = clamp(
+          projection + noise * configuration.flow.turbulence * 0.08,
+        );
+        const frontDistance = distortedDistance - waveRadius;
+        if (frontDistance > frontWidth || frontDistance < -recoveryWidth) continue;
+        const crest = frontDistance >= 0
+          ? 1 - frontDistance / frontWidth
+          : 1 + frontDistance / recoveryWidth;
+        const mask = clamp(0.5 + noise * 0.28 + (grain - 0.5) * 0.22);
         candidates.push({
           cell,
           distance,
-          intensity: clamp(crest * recovery * configuration.flow.intensity),
-          projection,
+          intensity: clamp(
+            crest
+              * (0.44 + distortedProjection * 0.32 + mask * 0.18)
+              * configuration.flow.intensity
+              * wave.strength,
+          ),
+          projection: distortedProjection,
         });
       }
 
@@ -378,8 +333,16 @@ export function renderKineticCanvas(
         .slice(0, waveBudget)) {
         const stage = Math.min(2, Math.floor(candidate.projection * 3));
         const scale = shape === "hexagon" || shape === "diamond"
-          ? 1
-          : [0.88, 0.96, 1 + configuration.flow.growth * 0.1][stage];
+          ? [
+            1,
+            1 + configuration.flow.growth * 0.025,
+            1 + configuration.flow.growth * 0.06,
+          ][stage]
+          : [
+            0.86 - configuration.flow.growth * 0.04,
+            0.92 + configuration.flow.growth * 0.02,
+            0.96 + configuration.flow.growth * 0.12,
+          ][stage];
         drawCell(
           context,
           candidate.cell,
@@ -398,7 +361,8 @@ export function renderKineticCanvas(
   context.globalAlpha = 1;
   canvas.dataset.dyntCellShape = shape;
   canvas.dataset.dyntCellSize = String(size);
-  canvas.dataset.dyntFieldCells = String(fieldCount);
+  canvas.dataset.dyntFlowModel = "radial-turbulent";
+  canvas.removeAttribute("data-dynt-field-cells");
   canvas.dataset.dyntFlowCells = String(flowCount);
   canvas.dataset.dyntFlowWaves = String(state.flows.length);
 }

@@ -17,7 +17,6 @@ export function useKinetic({
   exclude,
   observe,
   effects,
-  field,
   flow,
   limits,
   motion,
@@ -35,7 +34,6 @@ export function useKinetic({
       exclude,
       observe,
       effects,
-      field,
       flow,
       limits,
       motion,
@@ -46,7 +44,7 @@ export function useKinetic({
       controller.destroy();
       if (controllerRef.current === controller) controllerRef.current = null;
     };
-  }, [cells, effects, exclude, field, flow, limits, motion, observe, rootRef, selector]);
+  }, [cells, effects, exclude, flow, limits, motion, observe, rootRef, selector]);
 
   return controllerRef;
 }
