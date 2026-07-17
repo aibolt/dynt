@@ -1,0 +1,42 @@
+{
+  "name": "@dynt/web-components",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Custom-element lifecycle helpers for DYNT engines.",
+  "type": "module",
+  "exports": {
+    "./formation": {
+      "types": "./dist/formation.d.ts",
+      "import": "./dist/formation.js"
+    },
+    "./kinetic": {
+      "types": "./dist/kinetic.d.ts",
+      "import": "./dist/kinetic.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "peerDependencies": {
+    "@dynt/formation": ">=0.0.0",
+    "@dynt/kinetic": ">=0.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@dynt/formation": {
+      "optional": true
+    },
+    "@dynt/kinetic": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@dynt/formation": "0.0.0",
+    "@dynt/kinetic": "0.0.0",
+    "happy-dom": "20.10.6",
+    "typescript": "5.9.3"
+  }
+}
