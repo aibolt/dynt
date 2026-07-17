@@ -91,6 +91,22 @@ function installCanvasContext(window) {
   return operations;
 }
 
+function installElementAnimations(window) {
+  const animations = [];
+  window.HTMLElement.prototype.animate = function animate(keyframes, options) {
+    const animation = {
+      cancel() {
+        animation.oncancel?.();
+      },
+      oncancel: null,
+      onfinish: null,
+    };
+    animations.push({ animation, keyframes, options, target: this });
+    return animation;
+  };
+  return animations;
+}
+
 test("enhances only matching HTML targets inside the supplied root", () => {
   const window = new Window();
   const document = window.document;
@@ -651,6 +667,42 @@ test("pointer waves replace prior reactions and finish within their duration", (
   }
   assert.equal(frames.count, 0);
   assert.equal(button.style.getPropertyValue("--dynt-wave-opacity"), "0.0000");
+  controller.destroy();
+});
+
+test("wave impulses travel through semantic content with distance-timed lift", () => {
+  const window = new Window();
+  const animations = installElementAnimations(window);
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = `
+    <main><article><h2>Near</h2><p>Far</p></article></main>
+  `;
+  const article = document.querySelector("article");
+  const heading = document.querySelector("h2");
+  const paragraph = document.querySelector("p");
+  setRectangle(article, { left: 0, top: 0, width: 400, height: 200 });
+  setRectangle(heading, { left: 20, top: 40, width: 100, height: 30 });
+  setRectangle(paragraph, { left: 300, top: 130, width: 80, height: 30 });
+  const controller = createKinetic({
+    root: document.querySelector("main"),
+    selector: "article",
+    effects: { content: true, tilt: false, wave: true },
+    motion: { contentLift: 14, response: 1, waveDuration: 600 },
+  });
+
+  dispatchPointer(window, article, "pointerdown", { clientX: 20, clientY: 50 });
+  frames.runNext();
+
+  assert.equal(animations.length, 2);
+  const near = animations.find(({ target }) => target === heading);
+  const far = animations.find(({ target }) => target === paragraph);
+  assert.equal(near.options.delay < far.options.delay, true);
+  assert.equal(near.options.duration, 456);
+  assert.equal(Number.parseFloat(near.keyframes[1].translate.split(" ")[1]) < -8, true);
+
+  dispatchPointer(window, article, "pointerdown", { clientX: 20, clientY: 50 });
+  assert.equal(animations.length, 4);
   controller.destroy();
 });
 

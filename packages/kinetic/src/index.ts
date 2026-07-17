@@ -23,6 +23,7 @@ export type KineticEffects = Readonly<{
 }>;
 
 export type KineticMotion = Readonly<{
+  contentLift?: number;
   contentTravel?: number;
   drift?: number;
   maxTilt?: number;
@@ -110,6 +111,7 @@ export type KineticController = Readonly<{
 type KineticConfiguration = Readonly<{
   cells: ResolvedCellConfiguration;
   content: boolean;
+  contentLift: number;
   contentTravel: number;
   drift: boolean;
   driftAmount: number;
@@ -197,6 +199,7 @@ type ElementOwnership = {
   reactors: Map<HTMLElement, ReactorSnapshot>;
   snapshot: ElementSnapshot;
   state: MotionState;
+  waveAnimations: Map<HTMLElement, Animation>;
 };
 
 const BASE_CLASS = "dynt-kinetic";
@@ -246,6 +249,7 @@ const DEFAULT_CONFIGURATION: KineticConfiguration = Object.freeze({
     sizes: Object.freeze([40, 32, 24]) as readonly [number, number, number],
   }),
   content: false,
+  contentLift: 8,
   contentTravel: 6,
   drift: false,
   driftAmount: 1.5,
@@ -354,8 +358,9 @@ function normalizeConfiguration(
   }
   for (const name of Object.keys(motion ?? {})) {
     if (
-      name !== "drift"
+      name !== "contentLift"
       && name !== "contentTravel"
+      && name !== "drift"
       && name !== "maxTilt"
       && name !== "response"
       && name !== "waveDuration"
@@ -412,6 +417,7 @@ function normalizeConfiguration(
   }
 
   const content = effects?.content ?? base.content;
+  const contentLift = motion?.contentLift ?? base.contentLift;
   const contentTravel = motion?.contentTravel ?? base.contentTravel;
   const drift = effects?.drift ?? base.drift;
   const pressure = effects?.pressure ?? base.pressure;
@@ -466,6 +472,9 @@ function normalizeConfiguration(
   }
   if (!Number.isFinite(contentTravel) || contentTravel < 0 || contentTravel > 20) {
     throw new TypeError("DYNT Kinetic contentTravel must be between 0 and 20 pixels.");
+  }
+  if (!Number.isFinite(contentLift) || contentLift < 0 || contentLift > 24) {
+    throw new TypeError("DYNT Kinetic contentLift must be between 0 and 24 pixels.");
   }
   if (!Number.isFinite(response) || response <= 0 || response > 1) {
     throw new TypeError("DYNT Kinetic response must be greater than 0 and at most 1.");
@@ -594,6 +603,7 @@ function normalizeConfiguration(
       sizes: Object.freeze([...sizes]) as readonly [number, number, number],
     }),
     content,
+    contentLift,
     contentTravel,
     drift,
     driftAmount,
@@ -748,6 +758,11 @@ function restoreReactor(reactor: HTMLElement, snapshot: ReactorSnapshot) {
   if (!snapshot.hadClass) reactor.classList.remove(REACTOR_CLASS);
 }
 
+function cancelReactorAnimation(ownership: ElementOwnership, reactor: HTMLElement) {
+  ownership.waveAnimations.get(reactor)?.cancel();
+  ownership.waveAnimations.delete(reactor);
+}
+
 function syncReactors(ownership: ElementOwnership) {
   const desired = ownership.activeOwner?.configuration.content
     ? new Set(findReactors(ownership.element))
@@ -755,6 +770,7 @@ function syncReactors(ownership: ElementOwnership) {
 
   for (const [reactor, snapshot] of ownership.reactors) {
     if (desired.has(reactor)) continue;
+    cancelReactorAnimation(ownership, reactor);
     restoreReactor(reactor, snapshot);
     ownership.reactors.delete(reactor);
   }
@@ -1178,7 +1194,64 @@ export function createKinetic({
     ownership.state.waveY = nextFlow.y;
     ownership.state.waveProgress = 0;
     ownership.state.waveStartedAt = -1;
+    emitContentWave(ownership);
     scheduleMotion(ownership);
+  }
+
+  function emitContentWave(ownership: ElementOwnership) {
+    const configuration = owner.configuration;
+    if (!configuration.content || configuration.contentLift <= 0) return;
+    const surfaceBounds = ownership.element.getBoundingClientRect();
+    if (surfaceBounds.width <= 0 || surfaceBounds.height <= 0) return;
+
+    const sourceX = surfaceBounds.left + ((ownership.state.target.x + 1) / 2) * surfaceBounds.width;
+    const sourceY = surfaceBounds.top + ((ownership.state.target.y + 1) / 2) * surfaceBounds.height;
+    const maximumDistance = Math.max(1, Math.hypot(surfaceBounds.width, surfaceBounds.height));
+
+    for (const reactor of ownership.reactors.keys()) {
+      if (typeof reactor.animate !== "function") continue;
+      const bounds = reactor.getBoundingClientRect();
+      const centerX = bounds.left + bounds.width / 2;
+      const centerY = bounds.top + bounds.height / 2;
+      const offsetX = centerX - sourceX;
+      const offsetY = centerY - sourceY;
+      const distance = Math.hypot(offsetX, offsetY);
+      const normalizedDistance = clamp(distance / maximumDistance, 0, 1);
+      const directionX = distance > 0 ? offsetX / distance : 0;
+      const directionY = distance > 0 ? offsetY / distance : -1;
+      const lift = configuration.contentLift * (1 - normalizedDistance * 0.25);
+      const baseX = Number.parseFloat(reactor.style.getPropertyValue(REACTOR_X_PROPERTY)) || 0;
+      const baseY = Number.parseFloat(reactor.style.getPropertyValue(REACTOR_Y_PROPERTY)) || 0;
+
+      cancelReactorAnimation(ownership, reactor);
+      const animation = reactor.animate([
+        { offset: 0, translate: `${baseX}px ${baseY}px` },
+        {
+          offset: 0.3,
+          translate: `${baseX + directionX * lift * 0.35}px ${baseY - lift + directionY * lift * 0.12}px`,
+        },
+        {
+          offset: 0.58,
+          translate: `${baseX - directionX * lift * 0.12}px ${baseY + lift * 0.22}px`,
+        },
+        {
+          offset: 0.8,
+          translate: `${baseX + directionX * lift * 0.04}px ${baseY - lift * 0.09}px`,
+        },
+        { offset: 1, translate: `${baseX}px ${baseY}px` },
+      ], {
+        delay: normalizedDistance * configuration.waveDuration * 0.38,
+        duration: Math.max(180, configuration.waveDuration * 0.76),
+        easing: "cubic-bezier(0.16, 0.72, 0.22, 1)",
+      });
+      ownership.waveAnimations.set(reactor, animation);
+      animation.onfinish = () => {
+        if (ownership.waveAnimations.get(reactor) === animation) {
+          ownership.waveAnimations.delete(reactor);
+        }
+      };
+      animation.oncancel = animation.onfinish;
+    }
   }
 
   function handlePointerDown(event: PointerEvent) {
@@ -1279,7 +1352,10 @@ export function createKinetic({
     reducedImpactTimers.clear();
     for (const element of elements) {
       const ownership = ELEMENT_OWNERSHIP.get(element);
-      if (ownership?.activeOwner === owner) rest(ownership, true);
+      if (ownership?.activeOwner === owner) {
+        for (const reactor of ownership.reactors.keys()) cancelReactorAnimation(ownership, reactor);
+        rest(ownership, true);
+      }
     }
   }
 
@@ -1313,6 +1389,7 @@ export function createKinetic({
         motionStyles: snapshotMotionStyles(element),
       },
       state: createMotionState(),
+      waveAnimations: new Map(),
     };
     ELEMENT_OWNERSHIP.set(element, ownership);
     elements.add(element);
@@ -1327,7 +1404,10 @@ export function createKinetic({
   }
 
   function restore(element: HTMLElement, ownership: ElementOwnership) {
-    for (const [reactor, snapshot] of ownership.reactors) restoreReactor(reactor, snapshot);
+    for (const [reactor, snapshot] of ownership.reactors) {
+      cancelReactorAnimation(ownership, reactor);
+      restoreReactor(reactor, snapshot);
+    }
     ownership.reactors.clear();
     ownership.layer?.remove();
     restoreMotionStyles(element, ownership.snapshot);
