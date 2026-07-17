@@ -74,7 +74,7 @@ Formation applies configuration in this order: profile CSS defaults, controller 
 
 Duration and overflow are expressed in milliseconds and pixels respectively. Colors, width, and easing accept non-empty CSS values. Line style accepts `solid`, `dashed`, `dotted`, or `double`. Destroying a controller restores the exact inline custom-property values and priorities that existed before Formation managed the target.
 
-The rails stay fixed when Kinetic is also present. Kinetic moves locally owned interior content instead, so four-rail geometry and the application-owned host transform remain stable.
+When Kinetic is also present, the four rails join its bounded plate transform. Corner overflow contracts near the pointer and expands at the far edge while the application-owned host transform remains untouched.
 
 ## Viewport flow
 

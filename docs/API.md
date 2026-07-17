@@ -52,7 +52,7 @@ Phases are `unformed`, `locating`, `constructing`, `enclosed`, `revealing`, `for
 - `line-push` forges horizontal rails before vertical rails.
 - `line-rise` forges vertical rails before horizontal rails.
 
-Both built-ins use four complete Line Forge rails, optional corner overflow, enclosure fill, content reveal, fixed geometry during Kinetic response, and reversible deconstruction.
+Both built-ins use four complete Line Forge rails, optional corner overflow, enclosure fill, content reveal, coordinated Kinetic plate tilt, and reversible deconstruction.
 
 `createFormationProfileRegistry(definitions)` creates an immutable, typed registry. Each definition declares a unique name, a `dynt-formation--` class, edge order, supported tokens, transition completion hooks, rendering mode, and capability metadata. A custom profile supplies its own scoped CSS for that class.
 
@@ -83,8 +83,8 @@ Effect defaults are `pressure: true`, `tilt: true`, `content: false`, `drift: fa
 | Motion option | Default | Valid range |
 | --- | --- | --- |
 | `contentLift` | `8` pixels | `0` to `24` |
-| `contentTravel` | `6` pixels | `0` to `20` |
-| `maxTilt` | `8` degrees | `0` to `30` |
+| `contentTravel` | `3` pixels | `0` to `20` |
+| `maxTilt` | `1.35` degrees | `0` to `30` |
 | `response` | `0.18` | Greater than `0` through `1` |
 | `drift` | `1.5` pixels | `0` to `4` |
 | `waveDuration` | `480` milliseconds | `100` to `2000` |
@@ -114,9 +114,9 @@ Impact input accepts `pressure` from `0` to `1` and normalized `x` and `y` coord
 
 ### CSS channels
 
-Kinetic writes these engine-owned custom properties on a managed host: `--dynt-pressure`, `--dynt-pointer-x`, `--dynt-pointer-y`, `--dynt-tilt-x`, `--dynt-tilt-y`, `--dynt-drift-x`, `--dynt-drift-y`, `--dynt-content-x`, `--dynt-content-y`, `--dynt-wave-x`, `--dynt-wave-y`, `--dynt-wave-scale`, and `--dynt-wave-opacity`.
+Kinetic writes these engine-owned custom properties on a managed host: `--dynt-pressure`, `--dynt-pointer-x`, `--dynt-pointer-y`, `--dynt-tilt-x`, `--dynt-tilt-y`, `--dynt-shadow-x`, `--dynt-shadow-y`, `--dynt-tl-overflow`, `--dynt-tr-overflow`, `--dynt-bl-overflow`, `--dynt-br-overflow`, `--dynt-drift-x`, `--dynt-drift-y`, `--dynt-content-x`, `--dynt-content-y`, `--dynt-wave-x`, `--dynt-wave-y`, `--dynt-wave-scale`, and `--dynt-wave-opacity`.
 
-Applications can set `--dynt-cell-size` and `--dynt-kinetic-color`, or use `data-dynt-cell-shape` and `data-dynt-cell-size` for target-local geometry. When `effects.content` is enabled, Kinetic automatically identifies up to 48 semantic content groups per surface. Tilt and drift move those reactors through the individual CSS `translate` property while the Formation rails, Kinetic canvas, host transform, and nested managed surfaces stay fixed. Mark a custom group with `data-dynt-reactor` when its markup has no semantic candidate. A wave applies a distance-timed lift, rebound, and settle sequence to the same locally owned reactors.
+Applications can set `--dynt-cell-size` and `--dynt-kinetic-color`, or use `data-dynt-cell-shape` and `data-dynt-cell-size` for target-local geometry. Tilt moves the engine-owned cell plate and any shared Formation rails together, with differential corner overflow and an opposing shadow. When `effects.content` is enabled, Kinetic also identifies up to 48 semantic content groups per surface and moves them through the individual CSS `translate` property. The host transform and nested managed surfaces stay untouched. Mark a custom group with `data-dynt-reactor` when its markup has no semantic candidate. A wave applies a distance-timed lift, rebound, and settle sequence to the same locally owned reactors.
 
 ## Coordination
 

@@ -43,7 +43,7 @@ The controller enhances matching HTML elements without replacing them. It owns o
 
 ## Pressure and tilt
 
-One delegated pointer pipeline per controller resolves the nearest managed surface. Pointer position and pen or touch pressure feed bounded `--dynt-pressure`, `--dynt-pointer-x`, `--dynt-pointer-y`, `--dynt-tilt-x`, and `--dynt-tilt-y` properties. The decoration layer and any Formation rails stay fixed. With `content` enabled, Kinetic moves locally owned semantic content at bounded depths without replacing the host element's transform or background.
+One delegated pointer pipeline per controller resolves the nearest managed surface. Pointer position and pen or touch pressure feed bounded pressure and tilt channels. The engine-owned plate uses a restrained whole-surface rotation, opposing shadow, and four differential corner-overflow channels: the near corner compresses while the far corner extends. Shared Formation rails follow the same plate transform. With `content` enabled, Kinetic also moves locally owned semantic content at bounded depths without replacing the host element's transform or background.
 
 `maxTilt` is limited to 30 degrees, and `response` must be greater than zero and at most one. Damped interpolation stops requesting frames when every active surface reaches its target or returns to rest. Pausing immediately returns owned surfaces to rest and suspends input processing.
 

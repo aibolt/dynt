@@ -37,4 +37,4 @@ Repeated and nested controllers share ownership. The element is restored only af
 
 ## An application transform is affected
 
-Kinetic leaves the host transform, Formation rails, and canvas transform application-owned. With `effects.content: true`, it applies the individual CSS `translate` property only to locally owned semantic reactors, preserving an existing `transform`. Add `data-dynt-reactor` to select a custom content group, or disable `effects.content` when the application wants to own all interior motion.
+Kinetic leaves the host element's `transform` application-owned. Its own layer and any shared Formation rails use matching engine-owned plate transforms. With `effects.content: true`, it applies the individual CSS `translate` property only to locally owned semantic reactors, preserving each reactor's existing `transform`. Add `data-dynt-reactor` to select a custom content group, or disable `effects.content` when the application wants to own all interior motion.
