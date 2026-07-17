@@ -1434,6 +1434,7 @@ export function createKinetic({
     }
     if (ownership.owners.size > 0) {
       ownership.activeOwner = selectActiveOwner(ownership.owners);
+      syncReactors(ownership);
       resetMotionState(ownership);
       return;
     }

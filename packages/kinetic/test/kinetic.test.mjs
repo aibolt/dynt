@@ -344,6 +344,30 @@ test("repeated and nested controllers share one decoration until final cleanup",
   assert.equal(button.classList.contains("dynt-kinetic"), false);
 });
 
+test("semantic reactors follow the most specific shared controller", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><section><button><span>Content</span></button></section></main>";
+  const button = document.querySelector("button");
+  const content = document.querySelector("span");
+  const outer = createKinetic({
+    root: document.querySelector("main"),
+    selector: "button",
+    effects: { content: false },
+  });
+  const inner = createKinetic({
+    root: document.querySelector("section"),
+    selector: "button",
+    effects: { content: true },
+  });
+
+  assert.equal(content.classList.contains("dynt-kinetic__reactor"), true);
+  inner.destroy();
+  assert.equal(content.classList.contains("dynt-kinetic__reactor"), false);
+  assert.equal(button.hasAttribute("data-dynt-kinetic"), true);
+  outer.destroy();
+});
+
 test("delegated pointer input writes bounded pressure and tilt then becomes idle", () => {
   const window = new Window();
   const frames = installAnimationFrames(window);
