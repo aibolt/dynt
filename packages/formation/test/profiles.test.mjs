@@ -121,6 +121,10 @@ test("registry validation rejects duplicate names and unscoped classes", () => {
     }]),
     /valid lifecycle completion hooks/,
   );
+  assert.throws(
+    () => createFormationProfileRegistry([{ ...profile, tokens: ["unknown"] }]),
+    /unsupported token name/,
+  );
 });
 
 test("different profiles cannot claim the same target", () => {

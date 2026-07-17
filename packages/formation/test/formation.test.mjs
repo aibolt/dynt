@@ -57,6 +57,108 @@ test("preserves target identity and application event behavior", () => {
   assert.equal(clicks, 2);
 });
 
+test("applies root tokens and restores application inline styles exactly", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><button>Button</button></main>";
+  const button = document.querySelector("button");
+  button.style.setProperty("--dynt-line-color", "orange", "important");
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "button",
+    tokens: {
+      duration: 180,
+      lineColor: "cyan",
+      lineWidth: "2px",
+    },
+  });
+
+  assert.equal(button.style.getPropertyValue("--dynt-formation-duration"), "180ms");
+  assert.equal(button.style.getPropertyValue("--dynt-line-color"), "cyan");
+  assert.equal(button.style.getPropertyPriority("--dynt-line-color"), "");
+  assert.equal(button.style.getPropertyValue("--dynt-line-width"), "2px");
+
+  controller.destroy();
+  assert.equal(button.style.getPropertyValue("--dynt-formation-duration"), "");
+  assert.equal(button.style.getPropertyValue("--dynt-line-color"), "orange");
+  assert.equal(button.style.getPropertyPriority("--dynt-line-color"), "important");
+  assert.equal(button.style.getPropertyValue("--dynt-line-width"), "");
+});
+
+test("layers root, selector-group, and local tokens in order", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = `
+    <main>
+      <button id="base">Base</button>
+      <button id="accent" class="accent" data-dynt-formation-duration="75">Accent</button>
+    </main>
+  `;
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "button",
+    tokens: { duration: 400, lineColor: "white" },
+    groups: [
+      { selector: ".accent", tokens: { duration: 200, lineColor: "blue" } },
+      { selector: "button.accent", tokens: { lineColor: "cyan" } },
+    ],
+  });
+  const base = document.querySelector("#base");
+  const accent = document.querySelector("#accent");
+
+  assert.equal(base.style.getPropertyValue("--dynt-formation-duration"), "400ms");
+  assert.equal(base.style.getPropertyValue("--dynt-line-color"), "white");
+  assert.equal(accent.style.getPropertyValue("--dynt-formation-duration"), "75ms");
+  assert.equal(accent.style.getPropertyValue("--dynt-line-color"), "cyan");
+
+  controller.destroy();
+});
+
+test("update replaces token layers without rebuilding targets", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><button>Button</button></main>";
+  const button = document.querySelector("button");
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "button",
+    tokens: { duration: 200, lineColor: "white" },
+  });
+
+  controller.update({ tokens: { lineColor: "lime" } });
+
+  assert.deepEqual(controller.elements, [button]);
+  assert.equal(button.style.getPropertyValue("--dynt-formation-duration"), "");
+  assert.equal(button.style.getPropertyValue("--dynt-line-color"), "lime");
+
+  controller.update({ tokens: {} });
+  assert.equal(button.style.getPropertyValue("--dynt-line-color"), "");
+});
+
+test("shared controllers restore the preceding token layer", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><button>Button</button></main>";
+  const main = document.querySelector("main");
+  const button = document.querySelector("button");
+  const first = createFormation({
+    root: main,
+    selector: "button",
+    tokens: { lineColor: "red" },
+  });
+  const second = createFormation({
+    root: main,
+    selector: "button",
+    tokens: { lineColor: "blue" },
+  });
+
+  assert.equal(button.style.getPropertyValue("--dynt-line-color"), "blue");
+  second.destroy();
+  assert.equal(button.style.getPropertyValue("--dynt-line-color"), "red");
+  first.destroy();
+  assert.equal(button.style.getPropertyValue("--dynt-line-color"), "");
+});
+
 test("skips non-HTML matches without partially enhancing them", () => {
   const window = new Window();
   const document = window.document;
@@ -458,6 +560,29 @@ test("observe reconciles selector and exclusion attribute changes", async () => 
   assert.equal(button.dataset.dyntFormation, "line-push");
 });
 
+test("observe reconciles local token changes", async () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><button>Button</button></main>";
+  const button = document.querySelector("button");
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "button",
+    observe: true,
+    tokens: { lineColor: "white" },
+  });
+
+  button.setAttribute("data-dynt-line-color", "cyan");
+  await flushMutations(window);
+  assert.equal(button.style.getPropertyValue("--dynt-line-color"), "cyan");
+
+  button.removeAttribute("data-dynt-line-color");
+  await flushMutations(window);
+  assert.equal(button.style.getPropertyValue("--dynt-line-color"), "white");
+
+  controller.destroy();
+});
+
 test("destroy disconnects observation and cancels pending refresh work", async () => {
   const window = new Window();
   const document = window.document;
@@ -552,4 +677,44 @@ test("rejects an invalid custom exclude selector", () => {
     }),
     /invalid exclude selector/,
   );
+});
+
+test("rejects invalid token and selector-group configuration before mutation", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><button>Button</button></main>";
+  const main = document.querySelector("main");
+  const button = document.querySelector("button");
+
+  assert.throws(
+    () => createFormation({
+      root: main,
+      selector: "button",
+      tokens: { duration: -1 },
+    }),
+    /duration must be a non-negative finite number/,
+  );
+  assert.throws(
+    () => createFormation({
+      root: main,
+      selector: "button",
+      groups: [{ selector: "[", tokens: {} }],
+    }),
+    /invalid group 1 selector/,
+  );
+  button.setAttribute("data-dynt-formation-duration", "");
+  assert.throws(
+    () => createFormation({ root: main, selector: "button" }),
+    /duration must be a non-negative finite number/,
+  );
+  button.removeAttribute("data-dynt-formation-duration");
+  assert.equal(button.dataset.dyntFormation, undefined);
+
+  const controller = createFormation({ root: main, selector: "button" });
+  assert.throws(() => controller.update(null), /update options must be an object/);
+  assert.throws(
+    () => controller.update({ unknown: true }),
+    /unknown update option: unknown/,
+  );
+  controller.destroy();
 });

@@ -9,6 +9,15 @@ import {
   type FormationProfileDefinition,
   type FormationProfileRegistry,
 } from "./profiles.js";
+import {
+  FORMATION_TOKEN_PROPERTIES,
+  mergeFormationTokens,
+  normalizeFormationTokens,
+  readLocalFormationTokens,
+  type FormationTokenName,
+  type FormationTokens,
+  type ResolvedFormationTokens,
+} from "./tokens.js";
 
 export type { FormationCommand, FormationPhase } from "./lifecycle.js";
 export {
@@ -21,6 +30,7 @@ export type {
   FormationProfileRegistry,
   FormationTransitionHook,
 } from "./profiles.js";
+export type { FormationTokenName, FormationTokens } from "./tokens.js";
 
 export type FormationRoot = Document | DocumentFragment | HTMLElement;
 
@@ -32,6 +42,16 @@ export type FormationTransition = Readonly<{
 
 export type FormationTransitionListener = (transition: FormationTransition) => void;
 
+export type FormationSelectorGroup = Readonly<{
+  selector: string;
+  tokens: FormationTokens;
+}>;
+
+export type FormationUpdateOptions = Readonly<{
+  groups?: readonly FormationSelectorGroup[];
+  tokens?: FormationTokens;
+}>;
+
 export type FormationOptions<ProfileName extends string = FormationProfile> = {
   root: FormationRoot;
   selector: string;
@@ -39,6 +59,8 @@ export type FormationOptions<ProfileName extends string = FormationProfile> = {
   profile?: ProfileName;
   profiles?: FormationProfileRegistry<ProfileName>;
   observe?: boolean;
+  groups?: readonly FormationSelectorGroup[];
+  tokens?: FormationTokens;
 };
 
 export type FormationController<ProfileName extends string = FormationProfile> = {
@@ -47,6 +69,7 @@ export type FormationController<ProfileName extends string = FormationProfile> =
   form(target?: HTMLElement): void;
   withdraw(target?: HTMLElement): void;
   subscribe(listener: FormationTransitionListener): () => void;
+  update(options: FormationUpdateOptions): void;
   refresh(): number;
   destroy(): void;
 };
@@ -56,7 +79,13 @@ type ElementSnapshot = {
   hadProfileClass: boolean;
   formationAttribute: string | null;
   phaseAttribute: string | null;
+  tokenStyles: Readonly<Record<FormationTokenName, StylePropertySnapshot>>;
 };
+
+type StylePropertySnapshot = Readonly<{
+  priority: string;
+  value: string;
+}>;
 
 type FormationOwner = {
   listeners: Set<FormationTransitionListener>;
@@ -65,6 +94,8 @@ type FormationOwner = {
 type ElementOwnership = {
   cancelInitialForm?: () => void;
   owners: Set<FormationOwner>;
+  ownerTokens: Map<FormationOwner, ResolvedFormationTokens>;
+  managedTokenProperties: Set<FormationTokenName>;
   phase: FormationPhase;
   profile: FormationProfileDefinition;
   snapshot: ElementSnapshot;
@@ -77,6 +108,11 @@ const PHASE_ATTRIBUTE = "data-dynt-formation-phase";
 export const FORMATION_PHASE_EVENT = "dynt:formation-phase";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const ELEMENT_OWNERSHIP = new WeakMap<HTMLElement, ElementOwnership>();
+
+type NormalizedFormationSelectorGroup = Readonly<{
+  selector: string;
+  tokens: ResolvedFormationTokens;
+}>;
 
 function isFormationRoot(value: unknown): value is FormationRoot {
   if (!value || typeof value !== "object") return false;
@@ -249,6 +285,79 @@ function validateSelector(root: FormationRoot, selector: string, label: string) 
   }
 }
 
+function normalizeSelectorGroups(
+  root: FormationRoot,
+  groups: readonly FormationSelectorGroup[] | undefined,
+  supportedTokens: readonly FormationTokenName[],
+): readonly NormalizedFormationSelectorGroup[] {
+  if (groups === undefined) return [];
+  if (!Array.isArray(groups)) {
+    throw new TypeError("DYNT Formation groups must be an array.");
+  }
+
+  return groups.map((group, index) => {
+    if (!group || typeof group.selector !== "string" || !group.selector.trim()) {
+      throw new TypeError("DYNT Formation groups require a non-empty selector.");
+    }
+    validateSelector(root, group.selector, `group ${index + 1}`);
+    return Object.freeze({
+      selector: group.selector,
+      tokens: normalizeFormationTokens(
+        group.tokens,
+        supportedTokens,
+        `group ${index + 1} tokens`,
+      ),
+    });
+  });
+}
+
+function snapshotTokenStyles(element: HTMLElement) {
+  return Object.fromEntries(
+    Object.entries(FORMATION_TOKEN_PROPERTIES).map(([name, property]) => [
+      name,
+      Object.freeze({
+        priority: element.style.getPropertyPriority(property),
+        value: element.style.getPropertyValue(property),
+      }),
+    ]),
+  ) as Record<FormationTokenName, StylePropertySnapshot>;
+}
+
+function restoreTokenStyle(
+  element: HTMLElement,
+  token: FormationTokenName,
+  snapshot: StylePropertySnapshot,
+) {
+  const property = FORMATION_TOKEN_PROPERTIES[token];
+  if (snapshot.value) {
+    element.style.setProperty(property, snapshot.value, snapshot.priority);
+  } else {
+    element.style.removeProperty(property);
+  }
+}
+
+function applyEffectiveTokens(element: HTMLElement, ownership: ElementOwnership) {
+  let effectiveTokens: ResolvedFormationTokens = {};
+  for (const tokens of ownership.ownerTokens.values()) effectiveTokens = tokens;
+
+  for (const token of Object.keys(FORMATION_TOKEN_PROPERTIES) as FormationTokenName[]) {
+    const value = effectiveTokens[token];
+    const property = FORMATION_TOKEN_PROPERTIES[token];
+
+    if (value !== undefined) {
+      ownership.managedTokenProperties.add(token);
+      if (
+        element.style.getPropertyValue(property) !== value
+        || element.style.getPropertyPriority(property)
+      ) {
+        element.style.setProperty(property, value);
+      }
+    } else if (ownership.managedTokenProperties.delete(token)) {
+      restoreTokenStyle(element, token, ownership.snapshot.tokenStyles[token]);
+    }
+  }
+}
+
 function isExcluded(element: HTMLElement, root: FormationRoot, excludeSelector: string) {
   let current: HTMLElement | null = element;
 
@@ -287,6 +396,8 @@ export function createFormation<ProfileName extends string = FormationProfile>({
   profile = "line-push" as ProfileName,
   profiles = defaultFormationProfiles as FormationProfileRegistry<ProfileName>,
   observe = false,
+  groups,
+  tokens,
 }: FormationOptions<ProfileName>): FormationController<ProfileName> {
   if (!isFormationRoot(root)) {
     throw new TypeError("DYNT Formation requires a Document, DocumentFragment, or HTML element root.");
@@ -312,6 +423,8 @@ export function createFormation<ProfileName extends string = FormationProfile>({
     : DEFAULT_EXCLUDE_SELECTOR;
   validateSelector(root, selector, "target");
   validateSelector(root, excludeSelector, "exclude");
+  let rootTokens = normalizeFormationTokens(tokens, selectedProfile.tokens);
+  let selectorGroups = normalizeSelectorGroups(root, groups, selectedProfile.tokens);
   const elements = new Set<HTMLElement>();
   const owner: FormationOwner = { listeners: new Set() };
   const document = root.nodeType === 9 ? root as Document : root.ownerDocument;
@@ -325,8 +438,24 @@ export function createFormation<ProfileName extends string = FormationProfile>({
   let refreshScheduled = false;
   let observer: MutationObserver | null = null;
 
-  function enhance(element: HTMLElement) {
-    if (elements.has(element)) return false;
+  function resolveTokens(element: HTMLElement) {
+    const layers = [rootTokens];
+    for (const group of selectorGroups) {
+      if (element.matches(group.selector)) layers.push(group.tokens);
+    }
+    layers.push(readLocalFormationTokens(element, selectedProfile.tokens));
+    return mergeFormationTokens(...layers);
+  }
+
+  function enhance(element: HTMLElement, resolvedTokens: ResolvedFormationTokens) {
+    if (elements.has(element)) {
+      const ownership = ELEMENT_OWNERSHIP.get(element);
+      if (ownership) {
+        ownership.ownerTokens.set(owner, resolvedTokens);
+        applyEffectiveTokens(element, ownership);
+      }
+      return false;
+    }
 
     const existingOwnership = ELEMENT_OWNERSHIP.get(element);
     if (existingOwnership) {
@@ -334,7 +463,9 @@ export function createFormation<ProfileName extends string = FormationProfile>({
         throw new TypeError("DYNT Formation cannot apply different profiles to the same target.");
       }
       existingOwnership.owners.add(owner);
+      existingOwnership.ownerTokens.set(owner, resolvedTokens);
       elements.add(element);
+      applyEffectiveTokens(element, existingOwnership);
       return true;
     }
 
@@ -343,9 +474,12 @@ export function createFormation<ProfileName extends string = FormationProfile>({
       hadProfileClass: element.classList.contains(profileClass),
       formationAttribute: element.getAttribute("data-dynt-formation"),
       phaseAttribute: element.getAttribute(PHASE_ATTRIBUTE),
+      tokenStyles: snapshotTokenStyles(element),
     };
     const ownership: ElementOwnership = {
+      managedTokenProperties: new Set(),
       owners: new Set([owner]),
+      ownerTokens: new Map([[owner, resolvedTokens]]),
       phase: "unformed",
       profile: selectedProfile,
       snapshot,
@@ -356,6 +490,7 @@ export function createFormation<ProfileName extends string = FormationProfile>({
     element.classList.add(BASE_CLASS, profileClass);
     element.setAttribute("data-dynt-formation", selectedProfile.name);
     element.setAttribute(PHASE_ATTRIBUTE, "unformed");
+    applyEffectiveTokens(element, ownership);
     scheduleInitialForm(element, ownership, view);
     return true;
   }
@@ -375,6 +510,10 @@ export function createFormation<ProfileName extends string = FormationProfile>({
     } else {
       element.setAttribute(PHASE_ATTRIBUTE, snapshot.phaseAttribute);
     }
+
+    for (const token of Object.keys(FORMATION_TOKEN_PROPERTIES) as FormationTokenName[]) {
+      restoreTokenStyle(element, token, snapshot.tokenStyles[token]);
+    }
   }
 
   function release(element: HTMLElement) {
@@ -384,7 +523,11 @@ export function createFormation<ProfileName extends string = FormationProfile>({
     if (!ownership) return;
 
     ownership.owners.delete(owner);
-    if (ownership.owners.size > 0) return;
+    ownership.ownerTokens.delete(owner);
+    if (ownership.owners.size > 0) {
+      applyEffectiveTokens(element, ownership);
+      return;
+    }
 
     cancelInitialForm(ownership);
     restore(element, ownership.snapshot);
@@ -456,6 +599,9 @@ export function createFormation<ProfileName extends string = FormationProfile>({
       let enhancedCount = 0;
       const targets = findTargets(root, selector, excludeSelector);
       const targetSet = new Set(targets);
+      const targetTokens = new Map(
+        targets.map((element) => [element, resolveTokens(element)]),
+      );
 
       for (const element of targets) {
         const ownership = ELEMENT_OWNERSHIP.get(element);
@@ -470,7 +616,7 @@ export function createFormation<ProfileName extends string = FormationProfile>({
       }
 
       for (const element of targets) {
-        if (enhance(element)) enhancedCount += 1;
+        if (enhance(element, targetTokens.get(element)!)) enhancedCount += 1;
       }
 
       return enhancedCount;
@@ -520,6 +666,29 @@ export function createFormation<ProfileName extends string = FormationProfile>({
     owner.listeners.clear();
   }
 
+  function update(options: FormationUpdateOptions) {
+    if (destroyed) return;
+    if (!options || typeof options !== "object" || Array.isArray(options)) {
+      throw new TypeError("DYNT Formation update options must be an object.");
+    }
+    for (const name of Object.keys(options)) {
+      if (name !== "groups" && name !== "tokens") {
+        throw new TypeError(`DYNT Formation received an unknown update option: ${name}.`);
+      }
+    }
+
+    const nextRootTokens = options.tokens === undefined
+      ? rootTokens
+      : normalizeFormationTokens(options.tokens, selectedProfile.tokens);
+    const nextSelectorGroups = options.groups === undefined
+      ? selectorGroups
+      : normalizeSelectorGroups(root, options.groups, selectedProfile.tokens);
+
+    rootTokens = nextRootTokens;
+    selectorGroups = nextSelectorGroups;
+    refresh();
+  }
+
   refresh();
   root.addEventListener("transitionend", handleTransitionEnd);
 
@@ -555,6 +724,7 @@ export function createFormation<ProfileName extends string = FormationProfile>({
         owner.listeners.delete(listener);
       };
     },
+    update,
     refresh,
     destroy,
   };

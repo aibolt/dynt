@@ -14,6 +14,14 @@ const formation = createFormation({
   exclude: ".third-party-widget",
   profile: "line-push",
   observe: true,
+  tokens: {
+    duration: 320,
+    lineColor: "#67e8f9",
+    lineWidth: "1px",
+  },
+  groups: [
+    { selector: ".featured", tokens: { lineWidth: "2px" } },
+  ],
 });
 
 formation.withdraw();
@@ -22,6 +30,7 @@ const unsubscribe = formation.subscribe(({ element, phase }) => {
   console.log(element, phase);
 });
 formation.refresh();
+formation.update({ tokens: { duration: 200 } });
 unsubscribe();
 formation.destroy();
 ```
@@ -44,6 +53,12 @@ Formation includes two independent, line-led profiles:
 The typed `createFormationProfileRegistry()` API accepts additional profile definitions without changing the engine. A definition declares its scoped CSS class, edge geometry, supported tokens, transition completion hooks, rendering strategy, and reduced-motion and responsive capabilities. Pass the returned registry through `profiles` and select its profile by name.
 
 Two controllers may share a target only when they use the same profile definition. Formation rejects conflicting profiles before changing that target.
+
+## Configuration layers
+
+Formation applies configuration in this order: profile CSS defaults, controller `tokens`, matching `groups` in array order, and local data attributes. Supported local overrides are `data-dynt-formation-duration`, `data-dynt-line-color`, and `data-dynt-line-width`. `update()` replaces supplied controller or group layers and reapplies them without replacing the managed elements.
+
+Duration is expressed in milliseconds. Color and width accept non-empty CSS values. Destroying a controller restores the exact inline custom-property values and priorities that existed before Formation managed the target.
 
 ## Lifecycle contract
 

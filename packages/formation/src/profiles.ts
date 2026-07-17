@@ -1,3 +1,8 @@
+import {
+  FORMATION_TOKEN_PROPERTIES,
+  type FormationTokenName,
+} from "./tokens.js";
+
 export type FormationTransitionHook = Readonly<{
   propertyName: string;
   pseudoElement: "::before" | "::after";
@@ -10,7 +15,7 @@ export type FormationProfileDefinition<Name extends string = string> = Readonly<
     type: "edge-lines";
     edgeOrder: "horizontal-vertical" | "vertical-horizontal";
   }>;
-  tokens: readonly ("duration" | "line-color" | "line-width")[];
+  tokens: readonly FormationTokenName[];
   lifecycle: Readonly<{
     formComplete: FormationTransitionHook;
     withdrawComplete: FormationTransitionHook;
@@ -45,6 +50,30 @@ export function createFormationProfileRegistry<
     }
     if (definitions.has(profile.name)) {
       throw new TypeError(`DYNT Formation received a duplicate profile: ${profile.name}.`);
+    }
+    if (
+      !profile.geometry
+      || profile.geometry.type !== "edge-lines"
+      || (
+        profile.geometry.edgeOrder !== "horizontal-vertical"
+        && profile.geometry.edgeOrder !== "vertical-horizontal"
+      )
+      || profile.rendering !== "pseudo-elements"
+    ) {
+      throw new TypeError("DYNT Formation profiles require supported geometry and rendering metadata.");
+    }
+    if (
+      !Array.isArray(profile.tokens)
+      || profile.tokens.some((token) => !Object.hasOwn(FORMATION_TOKEN_PROPERTIES, token))
+    ) {
+      throw new TypeError("DYNT Formation profiles contain an unsupported token name.");
+    }
+    if (
+      !profile.capabilities
+      || typeof profile.capabilities.reducedMotion !== "boolean"
+      || typeof profile.capabilities.responsive !== "boolean"
+    ) {
+      throw new TypeError("DYNT Formation profiles require capability metadata.");
     }
 
     for (const hook of [profile.lifecycle?.formComplete, profile.lifecycle?.withdrawComplete]) {
