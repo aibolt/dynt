@@ -43,7 +43,7 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 - [x] Implement the independent `@dynt/kinetic` DOM ownership package.
 - [x] Add bounded pointer pressure and tilt.
 - [x] Add cleanup, ownership, and reduced-motion behavior.
-- [ ] Verify that Kinetic works on plain HTML without Formation.
+- [x] Verify that Kinetic works on plain HTML without Formation.
 
 ## Phase 4 — Combined operation
 

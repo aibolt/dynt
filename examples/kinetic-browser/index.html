@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DYNT Kinetic browser verification</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="../../packages/kinetic/src/styles.css">
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: system-ui, sans-serif;
+      }
+
+      body {
+        background: #090b10;
+        color: #e7edf7;
+        margin: 0;
+        padding: 2rem;
+      }
+
+      .controls {
+        display: flex;
+        gap: 0.75rem;
+      }
+
+      main {
+        display: grid;
+        gap: 1rem;
+        margin-block: 2rem;
+        max-width: 44rem;
+      }
+
+      .surface {
+        --dynt-kinetic-color: rgb(103 232 249 / 0.38);
+        background: #111827;
+        border: 1px solid #273449;
+        color: inherit;
+        min-height: 3rem;
+        padding: 1rem;
+      }
+
+      .nested {
+        margin-top: 1rem;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      output {
+        display: block;
+        font-family: ui-monospace, monospace;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Kinetic browser verification</h1>
+
+    <div class="controls">
+      <button id="pause" type="button">Pause</button>
+      <button id="resume" type="button">Resume</button>
+      <button id="add-target" type="button">Add target</button>
+    </div>
+
+    <main id="app">
+      <section id="parent-surface" class="surface">
+        Parent surface
+        <button id="nested-surface" class="surface nested" type="button">
+          Nearest nested surface
+        </button>
+      </section>
+
+      <a id="link-surface" class="surface" href="#verified">Focusable link surface</a>
+      <input id="input-surface" class="surface" aria-label="Editable input" value="Editable value">
+    </main>
+
+    <output id="status" aria-live="polite"></output>
+
+    <script type="module">
+      import { createKinetic } from "../../packages/kinetic/dist/index.js";
+
+      const app = document.querySelector("#app");
+      const status = document.querySelector("#status");
+      const kinetic = createKinetic({
+        root: app,
+        selector: ".surface",
+        observe: true,
+        effects: {
+          pressure: true,
+          tilt: true,
+        },
+      });
+      let statusTimer;
+
+      function renderStatus() {
+        status.textContent = kinetic.elements
+          .map((element) => {
+            const style = element.style;
+            return `${element.id}:${style.getPropertyValue("--dynt-pressure")}:${style.getPropertyValue("--dynt-tilt-y")}`;
+          })
+          .join("\n");
+      }
+
+      function scheduleStatus() {
+        window.clearTimeout(statusTimer);
+        statusTimer = window.setTimeout(renderStatus, 220);
+      }
+
+      app.addEventListener("pointermove", scheduleStatus);
+      app.addEventListener("pointerleave", scheduleStatus);
+      document.querySelector("#pause").addEventListener("click", () => {
+        kinetic.pause();
+        renderStatus();
+      });
+      document.querySelector("#resume").addEventListener("click", () => {
+        kinetic.resume();
+        renderStatus();
+      });
+      document.querySelector("#add-target").addEventListener("click", () => {
+        const article = document.createElement("article");
+        article.id = `dynamic-${kinetic.elements.length + 1}`;
+        article.className = "surface";
+        article.textContent = "Dynamically observed kinetic surface";
+        app.append(article);
+        scheduleStatus();
+      });
+      renderStatus();
+    </script>
+  </body>
+</html>
