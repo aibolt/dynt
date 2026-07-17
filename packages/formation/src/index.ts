@@ -24,6 +24,14 @@ export type {
 
 export type FormationRoot = Document | DocumentFragment | HTMLElement;
 
+export type FormationTransition = Readonly<{
+  element: HTMLElement;
+  previousPhase: FormationPhase;
+  phase: FormationPhase;
+}>;
+
+export type FormationTransitionListener = (transition: FormationTransition) => void;
+
 export type FormationOptions<ProfileName extends string = FormationProfile> = {
   root: FormationRoot;
   selector: string;
@@ -38,6 +46,7 @@ export type FormationController<ProfileName extends string = FormationProfile> =
   readonly profile: ProfileName;
   form(target?: HTMLElement): void;
   withdraw(target?: HTMLElement): void;
+  subscribe(listener: FormationTransitionListener): () => void;
   refresh(): number;
   destroy(): void;
 };
@@ -49,9 +58,13 @@ type ElementSnapshot = {
   phaseAttribute: string | null;
 };
 
+type FormationOwner = {
+  listeners: Set<FormationTransitionListener>;
+};
+
 type ElementOwnership = {
   cancelInitialForm?: () => void;
-  owners: Set<object>;
+  owners: Set<FormationOwner>;
   phase: FormationPhase;
   profile: FormationProfileDefinition;
   snapshot: ElementSnapshot;
@@ -61,6 +74,7 @@ const BASE_CLASS = "dynt-formation";
 const DEFAULT_EXCLUDE_SELECTOR = "[data-dynt-ignore]";
 const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 const PHASE_ATTRIBUTE = "data-dynt-formation-phase";
+export const FORMATION_PHASE_EVENT = "dynt:formation-phase";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const ELEMENT_OWNERSHIP = new WeakMap<HTMLElement, ElementOwnership>();
 
@@ -91,8 +105,25 @@ function setFormationPhase(
   ownership: ElementOwnership,
   phase: FormationPhase,
 ) {
+  const previousPhase = ownership.phase;
+  if (previousPhase === phase) return;
+
   ownership.phase = phase;
   element.setAttribute(PHASE_ATTRIBUTE, phase);
+
+  const transition = Object.freeze({ element, previousPhase, phase });
+  const EventConstructor = element.ownerDocument.defaultView?.CustomEvent;
+  if (EventConstructor) {
+    element.dispatchEvent(new EventConstructor(FORMATION_PHASE_EVENT, {
+      bubbles: true,
+      composed: true,
+      detail: transition,
+    }));
+  }
+
+  for (const owner of ownership.owners) {
+    for (const listener of owner.listeners) listener(transition);
+  }
 }
 
 function cancelInitialForm(ownership: ElementOwnership) {
@@ -282,7 +313,7 @@ export function createFormation<ProfileName extends string = FormationProfile>({
   validateSelector(root, selector, "target");
   validateSelector(root, excludeSelector, "exclude");
   const elements = new Set<HTMLElement>();
-  const owner = {};
+  const owner: FormationOwner = { listeners: new Set() };
   const document = root.nodeType === 9 ? root as Document : root.ownerDocument;
   const view = document?.defaultView;
   const observerOptions: MutationObserverInit = {
@@ -486,6 +517,7 @@ export function createFormation<ProfileName extends string = FormationProfile>({
     for (const element of Array.from(elements)) {
       release(element);
     }
+    owner.listeners.clear();
   }
 
   refresh();
@@ -511,6 +543,17 @@ export function createFormation<ProfileName extends string = FormationProfile>({
     },
     withdraw(target) {
       runCommand("withdraw", target);
+    },
+    subscribe(listener) {
+      if (typeof listener !== "function") {
+        throw new TypeError("DYNT Formation subscriptions require a listener function.");
+      }
+      if (destroyed) return () => {};
+
+      owner.listeners.add(listener);
+      return () => {
+        owner.listeners.delete(listener);
+      };
     },
     refresh,
     destroy,

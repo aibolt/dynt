@@ -239,6 +239,70 @@ test("form and withdraw complete and reverse the Line Push lifecycle", () => {
   assert.equal(button.dataset.dyntFormationPhase, "unformed");
 });
 
+test("subscriptions and DOM events report lifecycle transitions", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><button>Button</button></main>";
+  const main = document.querySelector("main");
+  const button = document.querySelector("button");
+  const controller = createFormation({ root: main, selector: "button" });
+  const subscribed = [];
+  const emitted = [];
+  const unsubscribe = controller.subscribe((transition) => {
+    subscribed.push(`${transition.previousPhase}:${transition.phase}`);
+  });
+  main.addEventListener("dynt:formation-phase", (event) => {
+    emitted.push(`${event.detail.previousPhase}:${event.detail.phase}`);
+  });
+
+  controller.form(button);
+  dispatchTransformTransition(window, button, "::after");
+
+  assert.deepEqual(subscribed, [
+    "unformed:locating",
+    "locating:constructing",
+    "constructing:enclosed",
+    "enclosed:revealing",
+    "revealing:formed",
+  ]);
+  assert.deepEqual(emitted, subscribed);
+
+  unsubscribe();
+  controller.withdraw(button);
+  assert.equal(subscribed.length, 5);
+});
+
+test("shared controllers receive transitions through their own subscriptions", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><button>Button</button></main>";
+  const main = document.querySelector("main");
+  const button = document.querySelector("button");
+  const first = createFormation({ root: main, selector: "button" });
+  const second = createFormation({ root: main, selector: "button" });
+  const firstPhases = [];
+  const secondPhases = [];
+  first.subscribe(({ phase }) => firstPhases.push(phase));
+  second.subscribe(({ phase }) => secondPhases.push(phase));
+
+  first.form(button);
+
+  assert.deepEqual(firstPhases, ["locating", "constructing"]);
+  assert.deepEqual(secondPhases, firstPhases);
+});
+
+test("subscribe validates listeners and becomes inert after destroy", () => {
+  const window = new Window();
+  const controller = createFormation({
+    root: window.document,
+    selector: "button",
+  });
+
+  assert.throws(() => controller.subscribe(null), /listener function/);
+  controller.destroy();
+  assert.doesNotThrow(() => controller.subscribe(() => {})());
+});
+
 test("lifecycle commands target one element or the full managed set", () => {
   const window = new Window();
   const document = window.document;

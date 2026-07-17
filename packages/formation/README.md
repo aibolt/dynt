@@ -18,7 +18,11 @@ const formation = createFormation({
 
 formation.withdraw();
 formation.form(document.querySelector("button"));
+const unsubscribe = formation.subscribe(({ element, phase }) => {
+  console.log(element, phase);
+});
 formation.refresh();
+unsubscribe();
 formation.destroy();
 ```
 
@@ -44,3 +48,5 @@ Two controllers may share a target only when they use the same profile definitio
 ## Lifecycle contract
 
 The Formation lifecycle contract uses explicit `unformed`, `locating`, `constructing`, `enclosed`, `revealing`, `formed`, `withdrawing`, and `deconstructing` phases. `form()` and `withdraw()` act on the full managed set or one managed element. Phase-driven CSS transitions let an opposing command reverse the active Line Push transition from its current visual position. When the operating system requests reduced motion, commands preserve the same lifecycle order and complete without waiting for transition events.
+
+`subscribe()` reports every phase change with the element, previous phase, and current phase. Formation also emits the bubbling `dynt:formation-phase` DOM event with the same detail so independent packages can coordinate without importing one another.
