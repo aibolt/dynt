@@ -2,7 +2,7 @@
 
 Thank you for contributing to DYNT. This project accepts carefully scoped, professionally prepared changes through reviewed pull requests.
 
-Every contribution is reviewed manually by a maintainer. Agent assistance may support development, but it does not replace engineering judgment, verification, or human accountability.
+Outside contributions are reviewed manually by a maintainer. Maintainer-authored internal work may be approved and merged after the required automated checks without a separate reviewer. Agent assistance may support development, but it does not replace engineering responsibility, verification, or owner control.
 
 ## Non-negotiable requirements
 
@@ -27,7 +27,7 @@ If an agent or code-generation tool materially assisted your contribution:
 
 1. Disclose that assistance in the pull request.
 2. Describe which parts were agent-assisted.
-3. Review the complete diff yourself before submission.
+3. For an outside contribution, review the complete diff yourself before submission.
 4. Verify all claims, APIs, dependencies, tests, and documentation independently.
 5. Remove speculative code, fabricated references, unnecessary abstractions, and unrelated changes.
 6. Confirm that no credentials, private data, or restricted source material were provided to the tool.
@@ -109,8 +109,9 @@ Keep pull requests small enough to review carefully. Split unrelated work into s
 
 ## Review and merge policy
 
-- Maintainers manually inspect every contribution.
-- Automated checks support review but never replace it.
+- Maintainers manually inspect every outside contribution.
+- Maintainer-authored internal changes may be owner-approved and merged after all required checks pass; an additional reviewer is not required.
+- Automated checks support outside-contribution review but never replace it.
 - At least one required owner approval must be recorded before merge.
 - Contributors must address review comments or explain the technical reason for a different approach.
 - Maintainers may request changes, additional tests, a smaller scope, or a revised design.
@@ -132,6 +133,8 @@ Maintainers may close a contribution that repeatedly ignores the project scope, 
 Submit only work you are authorized to contribute. Do not copy proprietary implementations, restricted source code, or material with an incompatible license. Identify any third-party algorithm, asset, or substantial reference and confirm that its use is permitted.
 
 ## Contributor checklist
+
+This checklist is required before an outside contributor requests review. Maintainer-authored internal work must complete the same technical checks but does not require an additional manual reviewer.
 
 Before requesting review, confirm:
 
