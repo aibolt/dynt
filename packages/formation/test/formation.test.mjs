@@ -24,6 +24,42 @@ test("enhances only matching elements inside the supplied root", () => {
   assert.equal(document.querySelector("#outside").dataset.dyntFormation, undefined);
 });
 
+test("ignores built-in and custom excluded subtrees", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = `
+    <main>
+      <button id="allowed">Allowed</button>
+      <section data-dynt-ignore><button id="ignored">Ignored</button></section>
+      <section class="third-party"><button id="custom">Custom</button></section>
+    </main>
+  `;
+
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "button",
+    exclude: ".third-party",
+  });
+
+  assert.deepEqual(controller.elements.map((element) => element.id), ["allowed"]);
+  assert.equal(document.querySelector("#ignored").dataset.dyntFormation, undefined);
+  assert.equal(document.querySelector("#custom").dataset.dyntFormation, undefined);
+});
+
+test("does not enhance a matching root marked with data-dynt-ignore", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = `
+    <main data-dynt-ignore><button>Ignored child</button></main>
+  `;
+  const main = document.querySelector("main");
+  const controller = createFormation({ root: main, selector: "main, button" });
+
+  assert.equal(controller.elements.length, 0);
+  assert.equal(main.dataset.dyntFormation, undefined);
+  assert.equal(main.querySelector("button").dataset.dyntFormation, undefined);
+});
+
 test("refresh enhances new matches without duplicating existing work", () => {
   const window = new Window();
   const document = window.document;
@@ -63,6 +99,30 @@ test("observe enhances synchronous insertions in one batched refresh", async () 
   assert.equal(controller.elements.length, 3);
   assert.equal(queryCount, 2);
   assert.equal(main.querySelectorAll("[data-dynt-formation='line-push']").length, 3);
+});
+
+test("observe ignores new matches inside excluded subtrees", async () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = `
+    <main><section data-dynt-ignore id="ignored"></section></main>
+  `;
+  const main = document.querySelector("main");
+  const controller = createFormation({
+    root: main,
+    selector: "button",
+    observe: true,
+  });
+
+  document.querySelector("#ignored").insertAdjacentHTML(
+    "beforeend",
+    "<button id='ignored-later'>Ignored later</button>",
+  );
+  main.insertAdjacentHTML("beforeend", "<button id='allowed-later'>Allowed later</button>");
+  await flushMutations(window);
+
+  assert.deepEqual(controller.elements.map((element) => element.id), ["allowed-later"]);
+  assert.equal(document.querySelector("#ignored-later").dataset.dyntFormation, undefined);
 });
 
 test("destroy disconnects observation and cancels pending refresh work", async () => {
@@ -111,5 +171,31 @@ test("rejects an empty selector", () => {
   assert.throws(
     () => createFormation({ root: window.document, selector: "  " }),
     /non-empty selector/,
+  );
+});
+
+test("rejects an empty exclude selector", () => {
+  const window = new Window();
+
+  assert.throws(
+    () => createFormation({
+      root: window.document,
+      selector: "button",
+      exclude: "  ",
+    }),
+    /non-empty exclude selector/,
+  );
+});
+
+test("rejects an invalid custom exclude selector", () => {
+  const window = new Window();
+
+  assert.throws(
+    () => createFormation({
+      root: window.document,
+      selector: "button",
+      exclude: "[",
+    }),
+    /invalid exclude selector/,
   );
 });

@@ -5,6 +5,7 @@ export type FormationRoot = Document | DocumentFragment | HTMLElement;
 export type FormationOptions = {
   root: FormationRoot;
   selector: string;
+  exclude?: string;
   profile?: FormationProfile;
   observe?: boolean;
 };
@@ -23,16 +24,44 @@ type ElementSnapshot = {
 };
 
 const BASE_CLASS = "dynt-formation";
+const DEFAULT_EXCLUDE_SELECTOR = "[data-dynt-ignore]";
 const PROFILE_CLASSES: Record<FormationProfile, string> = {
   "line-push": "dynt-formation--line-push",
 };
 
-function findTargets(root: FormationRoot, selector: string) {
+function validateSelector(root: FormationRoot, selector: string, label: string) {
+  try {
+    root.querySelector(selector);
+  } catch {
+    throw new TypeError(`DYNT Formation received an invalid ${label} selector.`);
+  }
+}
+
+function isExcluded(element: HTMLElement, root: FormationRoot, excludeSelector: string) {
+  let current: HTMLElement | null = element;
+
+  while (current) {
+    if (current.matches(excludeSelector)) return true;
+    if (current === root) return false;
+    current = current.parentElement;
+  }
+
+  return false;
+}
+
+function findTargets(root: FormationRoot, selector: string, excludeSelector: string) {
   const targets = Array.from(root.querySelectorAll<HTMLElement>(selector)).filter(
-    (element) => element.namespaceURI === "http://www.w3.org/1999/xhtml",
+    (element) => (
+      element.namespaceURI === "http://www.w3.org/1999/xhtml"
+      && !isExcluded(element, root, excludeSelector)
+    ),
   );
 
-  if (root.nodeType === 1 && (root as HTMLElement).matches(selector)) {
+  if (
+    root.nodeType === 1
+    && (root as HTMLElement).matches(selector)
+    && !isExcluded(root as HTMLElement, root, excludeSelector)
+  ) {
     targets.unshift(root as HTMLElement);
   }
 
@@ -42,6 +71,7 @@ function findTargets(root: FormationRoot, selector: string) {
 export function createFormation({
   root,
   selector,
+  exclude,
   profile = "line-push",
   observe = false,
 }: FormationOptions): FormationController {
@@ -49,7 +79,16 @@ export function createFormation({
     throw new TypeError("DYNT Formation requires a non-empty selector.");
   }
 
+  if (exclude !== undefined && !exclude.trim()) {
+    throw new TypeError("DYNT Formation requires a non-empty exclude selector.");
+  }
+
   const profileClass = PROFILE_CLASSES[profile];
+  const excludeSelector = exclude
+    ? `${DEFAULT_EXCLUDE_SELECTOR}, ${exclude}`
+    : DEFAULT_EXCLUDE_SELECTOR;
+  validateSelector(root, selector, "target");
+  validateSelector(root, excludeSelector, "exclude");
   const snapshots = new Map<HTMLElement, ElementSnapshot>();
   const document = root.nodeType === 9 ? root as Document : root.ownerDocument;
   const view = document?.defaultView;
@@ -76,7 +115,7 @@ export function createFormation({
 
     let enhancedCount = 0;
 
-    for (const element of findTargets(root, selector)) {
+    for (const element of findTargets(root, selector, excludeSelector)) {
       if (enhance(element)) enhancedCount += 1;
     }
 
