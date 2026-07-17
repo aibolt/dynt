@@ -8,10 +8,9 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present && node --test test/*.test.mjs"
   },
   "engines": {
     "node": ">=20"
   }
 }
-

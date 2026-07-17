@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DYNT combined browser verification</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="../../packages/formation/src/styles.css">
+    <link rel="stylesheet" href="../../packages/kinetic/src/styles.css">
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: system-ui, sans-serif;
+      }
+
+      body {
+        background: #090b10;
+        color: #e7edf7;
+        margin: 0;
+        padding: 2rem;
+      }
+
+      .controls {
+        display: flex;
+        gap: 0.75rem;
+      }
+
+      main {
+        display: grid;
+        gap: 1rem;
+        margin-block: 2rem;
+        max-width: 44rem;
+      }
+
+      .surface {
+        --dynt-formation-duration: 160ms;
+        --dynt-kinetic-color: rgb(103 232 249 / 0.38);
+        --dynt-line-color: #67e8f9;
+        background: #111827;
+        border: 0;
+        color: inherit;
+        padding: 1rem;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      output {
+        display: block;
+        font-family: ui-monospace, monospace;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Combined browser verification</h1>
+
+    <div class="controls">
+      <button id="form" type="button">Form</button>
+      <button id="withdraw" type="button">Withdraw</button>
+      <button id="impact" type="button">Impact</button>
+    </div>
+
+    <main id="app">
+      <section id="section-surface" class="surface">
+        Formation geometry and Kinetic field share this surface.
+      </section>
+      <button id="button-surface" class="surface" type="button">Focusable combined button</button>
+      <input id="input-surface" class="surface" aria-label="Combined input" value="Editable value">
+    </main>
+
+    <output id="status" aria-live="polite"></output>
+
+    <script type="module">
+      import { createFormation } from "../../packages/formation/dist/index.js";
+      import { createKinetic } from "../../packages/kinetic/dist/index.js";
+
+      const app = document.querySelector("#app");
+      const status = document.querySelector("#status");
+      const formation = createFormation({
+        root: app,
+        selector: ".surface",
+        observe: true,
+      });
+      const kinetic = createKinetic({
+        root: app,
+        selector: ".surface",
+        observe: true,
+        effects: { pressure: true, tilt: true, wave: true },
+      });
+      let statusTimer;
+
+      function renderStatus() {
+        status.textContent = formation.elements
+          .map((element) => (
+            `${element.id}:${element.dataset.dyntFormationPhase}:${element.style.getPropertyValue("--dynt-pressure")}:${element.style.getPropertyValue("--dynt-tilt-y")}`
+          ))
+          .join("\n");
+      }
+
+      function scheduleStatus() {
+        window.clearTimeout(statusTimer);
+        statusTimer = window.setTimeout(renderStatus, 260);
+      }
+
+      app.addEventListener("pointermove", scheduleStatus);
+      app.addEventListener("pointerleave", scheduleStatus);
+      app.addEventListener("dynt:formation-phase", scheduleStatus);
+      document.querySelector("#form").addEventListener("click", () => formation.form());
+      document.querySelector("#withdraw").addEventListener("click", () => formation.withdraw());
+      document.querySelector("#impact").addEventListener("click", () => {
+        kinetic.impact(document.querySelector("#section-surface"));
+        scheduleStatus();
+      });
+      renderStatus();
+    </script>
+  </body>
+</html>

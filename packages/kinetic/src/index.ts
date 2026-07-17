@@ -130,6 +130,8 @@ const DEFAULT_EXCLUDE_SELECTOR = "[data-dynt-ignore]";
 const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 const KINETIC_ATTRIBUTE = "data-dynt-kinetic";
 const LAYER_ATTRIBUTE = "data-dynt-kinetic-layer";
+const FORMATION_PHASE_ATTRIBUTE = "data-dynt-formation-phase";
+const FORMATION_PHASE_EVENT = "dynt:formation-phase";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const REST_EPSILON = 0.001;
 const DEFAULT_CONFIGURATION: KineticConfiguration = Object.freeze({
@@ -633,6 +635,19 @@ export function createKinetic({
     return null;
   }
 
+  function formationAllowsMotion(element: HTMLElement) {
+    let current: HTMLElement | null = element;
+
+    while (current) {
+      const phase = current.getAttribute(FORMATION_PHASE_ATTRIBUTE);
+      if (phase !== null && phase !== "formed") return false;
+      if (current === root) return true;
+      current = current.parentElement;
+    }
+
+    return true;
+  }
+
   function handlePointer(event: PointerEvent) {
     if (destroyed || paused) return;
     const element = findPointerTarget(event);
@@ -646,6 +661,10 @@ export function createKinetic({
 
     const ownership = ELEMENT_OWNERSHIP.get(element);
     if (!ownership || ownership.activeOwner !== owner) return;
+    if (!formationAllowsMotion(element)) {
+      rest(ownership, true);
+      return;
+    }
     const rectangle = element.getBoundingClientRect();
     if (rectangle.width <= 0 || rectangle.height <= 0) return;
 
@@ -743,6 +762,20 @@ export function createKinetic({
       const ownership = ELEMENT_OWNERSHIP.get(element);
       if (ownership?.activeOwner === owner) rest(ownership);
     }
+  }
+
+  function handleFormationPhase(event: Event) {
+    const transition = event as CustomEvent<{ phase?: string }>;
+    if (transition.detail?.phase === "formed") return;
+    const formationElement = event.target as HTMLElement | null;
+    if (!formationElement || formationElement.nodeType !== 1) return;
+
+    for (const element of elements) {
+      if (element !== formationElement && !formationElement.contains(element)) continue;
+      const ownership = ELEMENT_OWNERSHIP.get(element);
+      if (ownership?.activeOwner === owner) rest(ownership, true);
+    }
+    if (activeStates.size === 0) cancelFrame();
   }
 
   function stopMotion() {
@@ -874,6 +907,7 @@ export function createKinetic({
     root.removeEventListener("pointermove", handlePointer as EventListener);
     root.removeEventListener("pointerdown", handlePointerDown as EventListener);
     root.removeEventListener("pointerleave", handlePointerLeave);
+    root.removeEventListener(FORMATION_PHASE_EVENT, handleFormationPhase);
     for (const element of Array.from(elements)) release(element);
   }
 
@@ -902,6 +936,7 @@ export function createKinetic({
   root.addEventListener("pointermove", handlePointer as EventListener);
   root.addEventListener("pointerdown", handlePointerDown as EventListener);
   root.addEventListener("pointerleave", handlePointerLeave);
+  root.addEventListener(FORMATION_PHASE_EVENT, handleFormationPhase);
 
   if (observe) {
     if (!view?.MutationObserver) {

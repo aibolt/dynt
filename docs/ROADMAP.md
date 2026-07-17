@@ -47,10 +47,10 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 
 ## Phase 4 — Combined operation
 
-- [ ] Define the optional coordination contract.
-- [ ] Preserve local ownership across nested surfaces.
-- [ ] Add waves and impacts without changing Formation geometry.
-- [ ] Verify Formation-only, Kinetic-only, and combined installations.
+- [x] Define the optional DOM coordination contract.
+- [x] Preserve local ownership across nested surfaces.
+- [x] Add waves and impacts without changing Formation geometry.
+- [x] Verify Formation-only, Kinetic-only, and combined installations.
 
 ## Phase 4.5 — Advanced Kinetic effects
 
