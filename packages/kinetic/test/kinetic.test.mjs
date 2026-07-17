@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Window } from "happy-dom";
 
-import { createKinetic } from "../dist/index.js";
+import { createKinetic, kineticPresets } from "../dist/index.js";
 
 function flushMutations(window) {
   return new Promise((resolve) => window.setTimeout(resolve, 0));
@@ -204,6 +204,22 @@ test("canvas cells preserve geometry, nesting depth, local overrides, and wave f
   frames.runNext();
   assert.equal(canvases[2].dataset.dyntCellShape, "diamond");
   assert.equal(canvases[2].dataset.dyntCellSize, "18");
+  controller.destroy();
+});
+
+test("built-in presets remain immutable and directly consumable by the core engine", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><article>Surface</article></main>";
+  const controller = createKinetic({
+    root: document.querySelector("main"),
+    selector: "article",
+    ...kineticPresets.locator,
+  });
+
+  assert.equal(Object.isFrozen(kineticPresets.locator), true);
+  assert.equal(kineticPresets.locator.cells.shape, "hexagon");
+  assert.equal(controller.elements.length, 1);
   controller.destroy();
 });
 

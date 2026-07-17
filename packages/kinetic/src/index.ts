@@ -9,6 +9,8 @@ import {
 
 export type { KineticCellShape } from "./geometry.js";
 export type { KineticColorMode } from "./rendering.js";
+export { kineticPresets } from "./presets.js";
+export type { KineticPreset } from "./presets.js";
 
 export type KineticRoot = Document | DocumentFragment | HTMLElement;
 
@@ -982,7 +984,7 @@ export function createKinetic({
     return true;
   }
 
-  function handlePointer(event: PointerEvent) {
+  function handlePointer(event: PointerEvent, suppressField = true) {
     if (destroyed || paused) return;
     const element = findPointerTarget(event);
 
@@ -1016,7 +1018,8 @@ export function createKinetic({
       y: owner.configuration.tilt ? y : 0,
     };
     scheduleMotion(ownership);
-    scheduleFieldSuppression(ownership);
+    if (suppressField) scheduleFieldSuppression(ownership);
+    else clearFieldTimer(ownership);
   }
 
   function startWave(ownership: ElementOwnership) {
@@ -1038,7 +1041,7 @@ export function createKinetic({
   }
 
   function handlePointerDown(event: PointerEvent) {
-    handlePointer(event);
+    handlePointer(event, false);
     const element = findPointerTarget(event);
     if (!element) return;
     const ownership = ELEMENT_OWNERSHIP.get(element);
