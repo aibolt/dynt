@@ -37,7 +37,7 @@ Both engines use the browser DOM as their shared platform contract. A developer 
 
 Framework adapters only manage mounting and cleanup. They do not duplicate formation or kinetic behavior.
 
-Formation draws four complete rails with host pseudo-elements. Kinetic owns one accessibility-hidden canvas layer on compatible surfaces. Both consume the same bounded pointer, tilt, and drift variables, which keeps rails and cell fields visually coupled without taking ownership of the application's host transform.
+Formation can own one accessibility-hidden fixed viewport layer for transient flow lines and draws four complete permanent rails with host pseudo-elements. The controller measures targets, stages their viewport flights, and removes each flight after it crosses the target; application elements need no child markup. Kinetic owns one accessibility-hidden canvas layer on compatible surfaces. Both permanent rails and the cell field consume the same bounded pointer, tilt, and drift variables, which keeps them visually coupled without taking ownership of the application's host transform.
 
 ## Rules
 

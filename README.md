@@ -39,6 +39,7 @@ const formation = createFormation({
   root: document.querySelector("#app"),
   selector: "section, article, button, [data-surface]",
   observe: true,
+  viewportFlow: true,
 });
 ```
 
@@ -60,18 +61,18 @@ The root and selector are always explicit. Matching elements added later are ado
 
 | Package | Purpose | Requires the other engine |
 | --- | --- | --- |
-| `@dynt/formation` | Line Forge rails, Line Push, Line Rise, lifecycle, profiles, and tokens | No |
+| `@dynt/formation` | Viewport flow lines, Line Forge rails, Line Push, Line Rise, lifecycle, profiles, and tokens | No |
 | `@dynt/kinetic` | Cell geometry, pressure lens, directional flow, tilt, drift, impact, and content channels | No |
 | `@dynt/react` | Independent React hooks for either engine | No; engines are optional peers |
 | `@dynt/web-components` | Independent custom-element helpers for either engine | No; engines are optional peers |
 
 ## Quality gates
 
-- 45 Formation unit, DOM, profile, lifecycle, shadow-root, and performance checks.
+- 46 Formation unit, DOM, profile, lifecycle, viewport-flow, shadow-root, and performance checks.
 - 26 Kinetic unit, DOM, input, geometry, effects, shadow-root, and performance checks.
 - 6 adapter checks across React and Web Components.
 - 2 composition checks covering initialization and cleanup order.
-- 25 passing browser checks plus two intentional visual-test skips across Chromium, Firefox, and WebKit.
+- 28 passing browser checks plus two intentional visual-test skips across Chromium, Firefox, and WebKit.
 - Clean tarball installation and import verification for all four public packages.
 - High-severity dependency audit and reproducible release workflow.
 

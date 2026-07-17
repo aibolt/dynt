@@ -22,12 +22,15 @@ import "@dynt/formation/styles.css";
 | `profile` | `"line-push" \| "line-rise" \| custom name` | `"line-push"` | Formation profile. |
 | `profiles` | `FormationProfileRegistry` | Built-in registry | Registry used to resolve `profile`. |
 | `observe` | `boolean` | `false` | Reconcile matching DOM additions, removals, and relevant attribute changes. |
+| `viewportFlow` | `boolean \| FormationViewportFlow` | `false` | Send transient lines from the viewport boundaries before staging target rail construction. |
 | `tokens` | `FormationTokens` | Profile CSS defaults | Controller-level token layer. |
 | `groups` | `FormationSelectorGroup[]` | `[]` | Ordered selector-specific token layers. |
 
 `FormationTokens` accepts `duration`, `easing`, `fillColor`, `lineColor`, `lineStyle`, `lineWidth`, and `overflow`. Line style is `solid`, `dashed`, `dotted`, or `double`; overflow is `0` to `64` pixels. Equivalent local attributes are `data-dynt-formation-duration`, `data-dynt-formation-easing`, `data-dynt-fill-color`, `data-dynt-line-color`, `data-dynt-line-style`, `data-dynt-line-width`, and `data-dynt-formation-overflow`.
 
 Configuration precedence is profile CSS, controller tokens, matching groups in array order, then local data attributes.
+
+`viewportFlow: true` uses a `1160ms` travel duration, `110ms` target stagger, `680px` maximum line length, and `36px` overrun. An object can override `enabled`, `duration`, `stagger`, `lineLength`, and `overrun`. Duration accepts `120` to `4000` milliseconds, stagger `0` to `1000` milliseconds, line length `80` to `1200` pixels, and overrun `0` to `160` pixels. Target delays are bounded to an 1800ms sequence window.
 
 ### Formation controller
 
@@ -38,7 +41,7 @@ Configuration precedence is profile CSS, controller tokens, matching groups in a
 | `form(target?)` | Form one managed target or every managed target. |
 | `withdraw(target?)` | Reverse one managed target or every managed target. |
 | `subscribe(listener)` | Receive `{ element, previousPhase, phase }`; returns an unsubscribe function. |
-| `update({ tokens?, groups? })` | Replace the supplied configuration layers without replacing targets. |
+| `update({ tokens?, groups?, viewportFlow? })` | Replace the supplied configuration or future viewport-flow behavior without replacing targets. |
 | `refresh()` | Reconcile current matches and return the number newly enhanced. |
 | `destroy()` | Disconnect, cancel pending initialization, and restore Formation-owned DOM state. Idempotent. |
 

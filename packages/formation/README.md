@@ -6,7 +6,7 @@ Framework-independent, line-led construction and reversible formation lifecycle.
 npm install @dynt/formation
 ```
 
-Formation applies four-rail Line Forge construction through one root-level initializer. Line Push and Line Rise select different construction directions without changing the integration contract.
+Formation applies viewport-spanning flow lines and four-rail Line Forge construction through one root-level initializer. Line Push and Line Rise select different construction directions without changing the integration contract.
 
 ```ts
 import { createFormation } from "@dynt/formation";
@@ -18,6 +18,12 @@ const formation = createFormation({
   exclude: ".third-party-widget",
   profile: "line-push",
   observe: true,
+  viewportFlow: {
+    duration: 1160,
+    lineLength: 680,
+    overrun: 36,
+    stagger: 110,
+  },
   tokens: {
     duration: 320,
     easing: "cubic-bezier(0.22, 1, 0.36, 1)",
@@ -38,7 +44,7 @@ const unsubscribe = formation.subscribe(({ element, phase }) => {
   console.log(element, phase);
 });
 formation.refresh();
-formation.update({ tokens: { duration: 200 } });
+formation.update({ tokens: { duration: 200 }, viewportFlow: true });
 unsubscribe();
 formation.destroy();
 ```
@@ -69,6 +75,12 @@ Formation applies configuration in this order: profile CSS defaults, controller 
 Duration and overflow are expressed in milliseconds and pixels respectively. Colors, width, and easing accept non-empty CSS values. Line style accepts `solid`, `dashed`, `dotted`, or `double`. Destroying a controller restores the exact inline custom-property values and priorities that existed before Formation managed the target.
 
 The rails consume DYNT's shared pointer, tilt, and drift channels when Kinetic is also present. The four rail extensions therefore remain attached to their owning plate while the application-owned host transform remains untouched.
+
+## Viewport flow
+
+Set `viewportFlow: true` to use the default travelling-line choreography, or pass `{ duration, stagger, lineLength, overrun }`. Formation measures each target against its viewport, sends four transient lines from the window boundaries, begins the permanent rail construction as those lines strike the target, and staggers the same sequence across the managed set. The effect is opt-in because it deliberately occupies the full viewport; it remains available through the plain DOM engine, React hook, and Web Component helper without component-level markup.
+
+The viewport layer is outside application targets, uses `aria-hidden` and `pointer-events: none`, and is removed by `destroy()`. Reduced motion skips the travelling lines while preserving lifecycle events and the final formed state.
 
 ## Lifecycle contract
 

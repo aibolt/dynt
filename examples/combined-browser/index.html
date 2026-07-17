@@ -85,6 +85,12 @@
         root: app,
         selector: ".surface",
         observe: true,
+        viewportFlow: {
+          duration: 920,
+          lineLength: 680,
+          overrun: 36,
+          stagger: 140,
+        },
         tokens: {
           duration: 180,
           easing: "cubic-bezier(0.22, 1, 0.36, 1)",

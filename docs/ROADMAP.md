@@ -60,6 +60,7 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 
 ## Phase 4.6 — Signature renderer parity
 
+- [x] Restore viewport-spanning flow lines and staggered target acquisition before permanent rail construction.
 - [x] Upgrade Formation to four complete Line Forge rails with configurable overflow, style, fill, easing, and shared motion channels.
 - [x] Replace the generic Kinetic grid and ring with a bounded canvas pressure lens and directional cell flow.
 - [x] Add square, connected hexagon, circle, and interlocked diamond geometry.

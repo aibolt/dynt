@@ -104,6 +104,12 @@
         root: app,
         selector: ".target:not(.line-rise-target)",
         observe: true,
+        viewportFlow: {
+          duration: 820,
+          lineLength: 680,
+          overrun: 36,
+          stagger: 140,
+        },
         tokens: {
           duration: 160,
           easing: "cubic-bezier(0.22, 1, 0.36, 1)",

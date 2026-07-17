@@ -14,7 +14,12 @@ import { useFormation } from "@dynt/react/formation";
 
 function App() {
   const rootRef = useRef<HTMLElement>(null);
-  useFormation({ rootRef, selector: "section, article, button", observe: true });
+  useFormation({
+    rootRef,
+    selector: "section, article, button",
+    observe: true,
+    viewportFlow: true,
+  });
 
   return <main ref={rootRef}>{/* existing application tree */}</main>;
 }

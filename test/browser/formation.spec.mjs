@@ -1,5 +1,32 @@
 import { expect, test } from "@playwright/test";
 
+test("Formation viewport flow travels from the window and stages targets", async ({ page }) => {
+  await page.goto("/examples/formation-browser/");
+  const layer = page.locator("[data-dynt-formation-flow-layer]");
+  const firstFlight = layer.locator("[data-dynt-flow-target='section-target']");
+  const travellingLine = firstFlight.locator(".dynt-formation-flow-line--top");
+  await expect(layer).toHaveAttribute("aria-hidden", "true");
+  await expect(firstFlight).toHaveCount(1);
+  await expect(travellingLine).toHaveCSS("animation-name", "dynt-flow-from-left");
+
+  const start = await travellingLine.boundingBox();
+  await page.waitForTimeout(120);
+  const moved = await travellingLine.boundingBox();
+  expect(moved.x).toBeGreaterThan(start.x + 10);
+
+  await expect.poll(
+    () => page.locator("#section-target").getAttribute("data-dynt-formation-phase"),
+  ).not.toBe("unformed");
+  expect(
+    await page.locator("#button-target").getAttribute("data-dynt-formation-phase"),
+  ).toBe("unformed");
+  await expect(page.locator("#section-target")).toHaveAttribute(
+    "data-dynt-formation-phase",
+    "formed",
+  );
+  await expect(page.locator("[data-dynt-formation-flow]")).toHaveCount(0);
+});
+
 test("Formation lifecycle preserves controls, focus, input, and dynamic targets", async ({ page }) => {
   const errors = [];
   page.on("console", (message) => {

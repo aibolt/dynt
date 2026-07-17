@@ -18,6 +18,13 @@ import {
   type FormationTokens,
   type ResolvedFormationTokens,
 } from "./tokens.js";
+import {
+  createFormationFlowFlight,
+  createFormationFlowLayer,
+  normalizeFormationViewportFlow,
+  type FormationViewportFlowOption,
+  type ResolvedFormationViewportFlow,
+} from "./viewport-flow.js";
 
 export type { FormationCommand, FormationPhase } from "./lifecycle.js";
 export {
@@ -31,6 +38,10 @@ export type {
   FormationTransitionHook,
 } from "./profiles.js";
 export type { FormationTokenName, FormationTokens } from "./tokens.js";
+export type {
+  FormationViewportFlow,
+  FormationViewportFlowOption,
+} from "./viewport-flow.js";
 
 export type FormationRoot = Document | DocumentFragment | HTMLElement;
 
@@ -50,6 +61,7 @@ export type FormationSelectorGroup = Readonly<{
 export type FormationUpdateOptions = Readonly<{
   groups?: readonly FormationSelectorGroup[];
   tokens?: FormationTokens;
+  viewportFlow?: FormationViewportFlowOption;
 }>;
 
 export type FormationOptions<ProfileName extends string = FormationProfile> = {
@@ -61,6 +73,7 @@ export type FormationOptions<ProfileName extends string = FormationProfile> = {
   observe?: boolean;
   groups?: readonly FormationSelectorGroup[];
   tokens?: FormationTokens;
+  viewportFlow?: FormationViewportFlowOption;
 };
 
 export type FormationController<ProfileName extends string = FormationProfile> = {
@@ -401,6 +414,7 @@ export function createFormation<ProfileName extends string = FormationProfile>({
   observe = false,
   groups,
   tokens,
+  viewportFlow,
 }: FormationOptions<ProfileName>): FormationController<ProfileName> {
   if (!isFormationRoot(root)) {
     throw new TypeError("DYNT Formation requires a Document, DocumentFragment, or HTML element root.");
@@ -428,6 +442,7 @@ export function createFormation<ProfileName extends string = FormationProfile>({
   validateSelector(root, excludeSelector, "exclude");
   let rootTokens = normalizeFormationTokens(tokens, selectedProfile.tokens);
   let selectorGroups = normalizeSelectorGroups(root, groups, selectedProfile.tokens);
+  let resolvedViewportFlow = normalizeFormationViewportFlow(viewportFlow);
   const elements = new Set<HTMLElement>();
   const owner: FormationOwner = { listeners: new Set() };
   const document = root.nodeType === 9 ? root as Document : root.ownerDocument;
@@ -440,6 +455,113 @@ export function createFormation<ProfileName extends string = FormationProfile>({
   let destroyed = false;
   let refreshScheduled = false;
   let observer: MutationObserver | null = null;
+  let flowLayer: HTMLElement | null = null;
+  const flowFlights = new Map<HTMLElement, Set<HTMLElement>>();
+  const flowTimers = new Map<HTMLElement, Set<number>>();
+
+  function scheduleFlow(element: HTMLElement, callback: () => void, delay: number) {
+    if (!view || delay <= 0) {
+      callback();
+      return;
+    }
+
+    const timers = flowTimers.get(element) ?? new Set<number>();
+    flowTimers.set(element, timers);
+    const timer = view.setTimeout(() => {
+      timers.delete(timer);
+      if (!timers.size) flowTimers.delete(element);
+      callback();
+    }, delay);
+    timers.add(timer);
+  }
+
+  function cancelViewportFlow(target?: HTMLElement) {
+    const targets = target
+      ? [target]
+      : Array.from(new Set([...flowTimers.keys(), ...flowFlights.keys()]));
+
+    for (const element of targets) {
+      for (const timer of flowTimers.get(element) ?? []) view?.clearTimeout(timer);
+      flowTimers.delete(element);
+      for (const flight of flowFlights.get(element) ?? []) flight.remove();
+      flowFlights.delete(element);
+    }
+  }
+
+  function getFlowHost(): ParentNode | null {
+    if (!document) return null;
+    const tree = root.nodeType === 1 ? (root as HTMLElement).getRootNode() : root;
+    if (tree.nodeType === 11 && "host" in tree) return tree as ShadowRoot;
+    return document.body ?? document.documentElement;
+  }
+
+  function ensureFlowLayer() {
+    const host = getFlowHost();
+    if (!host || !document) return null;
+    if (!flowLayer) flowLayer = createFormationFlowLayer(document);
+    if (!flowLayer.isConnected) host.append(flowLayer);
+    return flowLayer;
+  }
+
+  function removeFlight(element: HTMLElement, flight: HTMLElement) {
+    flight.remove();
+    const flights = flowFlights.get(element);
+    flights?.delete(flight);
+    if (!flights?.size) flowFlights.delete(element);
+  }
+
+  function startViewportFlowSequence(
+    targets: readonly HTMLElement[],
+    flow: ResolvedFormationViewportFlow = resolvedViewportFlow,
+  ) {
+    if (
+      !flow.enabled
+      || prefersReducedMotion(view)
+      || !view
+      || !document
+    ) {
+      for (const element of targets) {
+        const ownership = ELEMENT_OWNERSHIP.get(element);
+        if (ownership) runFormationCommand(element, ownership, "form", prefersReducedMotion(view));
+      }
+      return;
+    }
+
+    const layer = ensureFlowLayer();
+    if (!layer) {
+      for (const element of targets) {
+        const ownership = ELEMENT_OWNERSHIP.get(element);
+        if (ownership) runFormationCommand(element, ownership, "form");
+      }
+      return;
+    }
+
+    const lastIndex = Math.max(1, targets.length - 1);
+    for (const [index, element] of targets.entries()) {
+      const sequenceDelay = Math.min(index * flow.stagger, (index / lastIndex) * 1800);
+      scheduleFlow(element, () => {
+        const ownership = ELEMENT_OWNERSHIP.get(element);
+        if (!ownership || !elements.has(element) || ownership.phase === "formed") return;
+
+        const flight = createFormationFlowFlight(document, element, flow, index);
+        if (!flight) {
+          runFormationCommand(element, ownership, "form");
+          return;
+        }
+
+        const flights = flowFlights.get(element) ?? new Set<HTMLElement>();
+        flights.add(flight);
+        flowFlights.set(element, flights);
+        layer.append(flight);
+
+        scheduleFlow(element, () => {
+          const current = ELEMENT_OWNERSHIP.get(element);
+          if (current && elements.has(element)) runFormationCommand(element, current, "form");
+        }, flow.duration * 0.42);
+        scheduleFlow(element, () => removeFlight(element, flight), flow.duration + 80);
+      }, sequenceDelay);
+    }
+  }
 
   function resolveTokens(element: HTMLElement) {
     const layers = [rootTokens];
@@ -494,7 +616,7 @@ export function createFormation<ProfileName extends string = FormationProfile>({
     element.setAttribute("data-dynt-formation", selectedProfile.name);
     element.setAttribute(PHASE_ATTRIBUTE, "unformed");
     applyEffectiveTokens(element, ownership);
-    scheduleInitialForm(element, ownership, view);
+    if (!resolvedViewportFlow.enabled) scheduleInitialForm(element, ownership, view);
     return true;
   }
 
@@ -521,6 +643,7 @@ export function createFormation<ProfileName extends string = FormationProfile>({
 
   function release(element: HTMLElement) {
     if (!elements.delete(element)) return;
+    cancelViewportFlow(element);
 
     const ownership = ELEMENT_OWNERSHIP.get(element);
     if (!ownership) return;
@@ -548,7 +671,11 @@ export function createFormation<ProfileName extends string = FormationProfile>({
   function runCommand(command: FormationCommand, target?: HTMLElement) {
     if (destroyed) return;
 
-    for (const element of commandTargets(target)) {
+    const targets = commandTargets(target);
+    if (command === "withdraw") {
+      for (const element of targets) cancelViewportFlow(element);
+    }
+    for (const element of targets) {
       const ownership = ELEMENT_OWNERSHIP.get(element);
       if (ownership) {
         runFormationCommand(element, ownership, command, prefersReducedMotion(view));
@@ -600,6 +727,7 @@ export function createFormation<ProfileName extends string = FormationProfile>({
 
     try {
       let enhancedCount = 0;
+      const enhancedElements: HTMLElement[] = [];
       const targets = findTargets(root, selector, excludeSelector);
       const targetSet = new Set(targets);
       const targetTokens = new Map(
@@ -619,7 +747,14 @@ export function createFormation<ProfileName extends string = FormationProfile>({
       }
 
       for (const element of targets) {
-        if (enhance(element, targetTokens.get(element)!)) enhancedCount += 1;
+        if (enhance(element, targetTokens.get(element)!)) {
+          enhancedCount += 1;
+          enhancedElements.push(element);
+        }
+      }
+
+      if (resolvedViewportFlow.enabled && enhancedElements.length) {
+        startViewportFlowSequence(enhancedElements);
       }
 
       return enhancedCount;
@@ -662,6 +797,9 @@ export function createFormation<ProfileName extends string = FormationProfile>({
     observer?.disconnect();
     observer = null;
     root.removeEventListener("transitionend", handleTransitionEnd);
+    cancelViewportFlow();
+    flowLayer?.remove();
+    flowLayer = null;
 
     for (const element of Array.from(elements)) {
       release(element);
@@ -675,7 +813,7 @@ export function createFormation<ProfileName extends string = FormationProfile>({
       throw new TypeError("DYNT Formation update options must be an object.");
     }
     for (const name of Object.keys(options)) {
-      if (name !== "groups" && name !== "tokens") {
+      if (name !== "groups" && name !== "tokens" && name !== "viewportFlow") {
         throw new TypeError(`DYNT Formation received an unknown update option: ${name}.`);
       }
     }
@@ -686,10 +824,17 @@ export function createFormation<ProfileName extends string = FormationProfile>({
     const nextSelectorGroups = options.groups === undefined
       ? selectorGroups
       : normalizeSelectorGroups(root, options.groups, selectedProfile.tokens);
+    const nextViewportFlow = options.viewportFlow === undefined
+      ? resolvedViewportFlow
+      : normalizeFormationViewportFlow(options.viewportFlow);
+    const disabledActiveFlow = resolvedViewportFlow.enabled && !nextViewportFlow.enabled;
 
     rootTokens = nextRootTokens;
     selectorGroups = nextSelectorGroups;
+    if (disabledActiveFlow) cancelViewportFlow();
+    resolvedViewportFlow = nextViewportFlow;
     refresh();
+    if (disabledActiveFlow) runCommand("form");
   }
 
   refresh();
@@ -711,7 +856,14 @@ export function createFormation<ProfileName extends string = FormationProfile>({
     },
     profile,
     form(target) {
-      runCommand("form", target);
+      if (destroyed) return;
+      if (!resolvedViewportFlow.enabled) {
+        runCommand("form", target);
+        return;
+      }
+      const targets = commandTargets(target);
+      for (const element of targets) cancelViewportFlow(element);
+      startViewportFlowSequence(targets);
     },
     withdraw(target) {
       runCommand("withdraw", target);

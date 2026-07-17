@@ -12,6 +12,7 @@ import { defineFormationElement } from "@dynt/web-components/formation";
 defineFormationElement("dynt-formation-root", {
   selector: "section, article, button",
   observe: true,
+  viewportFlow: true,
 });
 ```
 
