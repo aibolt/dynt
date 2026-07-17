@@ -55,13 +55,16 @@ test("Formation preserves accessible controls and responsive geometry", async ({
   const narrowBox = await section.boundingBox();
   expect(narrowBox.width).toBeLessThan(wideBox.width);
   await expect(section).toHaveAttribute("data-dynt-formation-phase", "formed");
-  expect(await section.evaluate((element) => ({
+  const geometry = await section.evaluate((element) => ({
     after: getComputedStyle(element, "::after").transform,
+    afterTop: getComputedStyle(element, "::after").top,
     before: getComputedStyle(element, "::before").transform,
-  }))).toEqual({
-    after: "matrix(1, 0, 0, 1, 0, 0)",
-    before: "matrix(1, 0, 0, 1, 0, 0)",
-  });
+    beforeLeft: getComputedStyle(element, "::before").left,
+  }));
+  expect(geometry.before).toBe(geometry.after);
+  expect(geometry.before).not.toBe("none");
+  expect(geometry.beforeLeft).toBe("-14px");
+  expect(geometry.afterTop).toBe("-14px");
 });
 
 test("Formation lifecycle visual checkpoints", async ({ browserName, page }) => {
@@ -83,13 +86,26 @@ test("Formation lifecycle visual checkpoints", async ({ browserName, page }) => 
       }
     `,
   });
-  await expect(section).toHaveScreenshot("formation-formed.png", { animations: "disabled" });
+  const captureFormation = async (name) => {
+    const box = await section.boundingBox();
+    const image = await page.screenshot({
+      animations: "disabled",
+      clip: {
+        height: box.height + 36,
+        width: box.width + 36,
+        x: box.x - 18,
+        y: box.y - 18,
+      },
+    });
+    expect(image).toMatchSnapshot(name);
+  };
+  await captureFormation("formation-formed.png");
 
   await page.getByRole("button", { name: "Withdraw all" }).click();
   await expect(section).toHaveAttribute("data-dynt-formation-phase", "unformed");
-  await expect(section).toHaveScreenshot("formation-unformed.png", { animations: "disabled" });
+  await captureFormation("formation-unformed.png");
 
   await page.getByRole("button", { name: "Form all" }).click();
   await expect(section).toHaveAttribute("data-dynt-formation-phase", "formed");
-  await expect(section).toHaveScreenshot("formation-formed.png", { animations: "disabled" });
+  await captureFormation("formation-formed.png");
 });

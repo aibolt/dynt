@@ -32,12 +32,11 @@
       }
 
       .target {
-        --dynt-formation-duration: 120ms;
-        --dynt-line-color: #67e8f9;
         background: #111827;
         border: 0;
         color: inherit;
         display: block;
+        min-height: 3rem;
         padding: 1rem;
       }
 
@@ -105,12 +104,29 @@
         root: app,
         selector: ".target:not(.line-rise-target)",
         observe: true,
+        tokens: {
+          duration: 160,
+          easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+          fillColor: "rgb(8 24 32 / 0.92)",
+          lineColor: "#67e8f9",
+          lineStyle: "solid",
+          lineWidth: "1px",
+          overflow: 14,
+        },
       });
       const lineRise = createFormation({
         root: app,
         selector: ".line-rise-target",
         profile: "line-rise",
         observe: true,
+        tokens: {
+          duration: 160,
+          fillColor: "rgb(8 24 32 / 0.92)",
+          lineColor: "#a7f3d0",
+          lineStyle: "dashed",
+          lineWidth: "1px",
+          overflow: 10,
+        },
       });
       const formations = [linePush, lineRise];
 

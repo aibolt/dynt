@@ -85,3 +85,37 @@ test("Kinetic preserves accessibility and accepts bounded pen input", async ({ p
     Number.parseFloat(element.style.getPropertyValue("--dynt-tilt-y"))
   ))).toBeLessThan(0);
 });
+
+test("Kinetic renders bounded local cells and directional flow in every geometry", async ({ page }) => {
+  await page.goto("/examples/kinetic-browser/");
+  const nested = page.locator("#nested-surface");
+  const canvas = nested.locator("[data-dynt-kinetic-canvas]");
+  const box = await nested.boundingBox();
+  const pointer = {
+    bubbles: true,
+    clientX: box.x + box.width * 0.35,
+    clientY: box.y + box.height * 0.45,
+    composed: true,
+    pointerType: "mouse",
+  };
+
+  await nested.dispatchEvent("pointermove", pointer);
+  await page.waitForTimeout(32);
+  await expect(canvas).toHaveAttribute("data-dynt-cell-shape", "square");
+  await expect(canvas).toHaveAttribute("data-dynt-cell-size", "32");
+  await expect.poll(() => canvas.getAttribute("data-dynt-field-cells").then(Number)).toBeGreaterThan(0);
+  expect(Number(await canvas.getAttribute("data-dynt-field-cells"))).toBeLessThanOrEqual(61);
+
+  await nested.dispatchEvent("pointerdown", pointer);
+  await page.waitForTimeout(32);
+  await expect.poll(() => canvas.getAttribute("data-dynt-flow-cells").then(Number)).toBeGreaterThan(0);
+  expect(Number(await canvas.getAttribute("data-dynt-flow-cells"))).toBeLessThanOrEqual(420);
+  expect(await canvas.evaluate((element) => (
+    element.width / Number.parseFloat(element.style.width)
+  ))).toBeLessThanOrEqual(1.5);
+
+  for (const shape of ["Hexagon", "Circle", "Diamond", "Square"]) {
+    await page.getByRole("button", { name: `${shape} cells` }).click();
+    await expect(canvas).toHaveAttribute("data-dynt-cell-shape", shape.toLowerCase());
+  }
+});

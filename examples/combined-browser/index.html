@@ -33,12 +33,11 @@
       }
 
       .surface {
-        --dynt-formation-duration: 160ms;
         --dynt-kinetic-color: rgb(103 232 249 / 0.38);
-        --dynt-line-color: #67e8f9;
         background: #111827;
         border: 0;
         color: inherit;
+        min-height: 6rem;
         padding: 1rem;
       }
 
@@ -75,7 +74,10 @@
 
     <script type="module">
       import { createFormation } from "../../packages/formation/dist/index.js";
-      import { createKinetic } from "../../packages/kinetic/dist/index.js";
+      import {
+        createKinetic,
+        kineticPresets,
+      } from "../../packages/kinetic/dist/index.js";
 
       const app = document.querySelector("#app");
       const status = document.querySelector("#status");
@@ -83,12 +85,21 @@
         root: app,
         selector: ".surface",
         observe: true,
+        tokens: {
+          duration: 180,
+          easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+          fillColor: "rgb(8 24 32 / 0.92)",
+          lineColor: "#67e8f9",
+          lineStyle: "solid",
+          lineWidth: "1px",
+          overflow: 14,
+        },
       });
       const kinetic = createKinetic({
         root: app,
         selector: ".surface",
         observe: true,
-        effects: { pressure: true, tilt: true, wave: true },
+        ...kineticPresets.structural,
       });
       let statusTimer;
 

@@ -16,6 +16,13 @@ test("combined mode suppresses Kinetic until Formation is formed", async ({ page
   await expect.poll(() => section.evaluate((element) => (
     Math.abs(Number.parseFloat(element.style.getPropertyValue("--dynt-tilt-y")))
   ))).toBeGreaterThan(0);
+  const coupledTransforms = await section.evaluate((element) => ({
+    field: getComputedStyle(element.querySelector("[data-dynt-kinetic-layer]")).transform,
+    horizontalRails: getComputedStyle(element, "::before").transform,
+    verticalRails: getComputedStyle(element, "::after").transform,
+  }));
+  expect(coupledTransforms.horizontalRails).toBe(coupledTransforms.field);
+  expect(coupledTransforms.verticalRails).toBe(coupledTransforms.field);
 
   await page.getByRole("button", { name: "Withdraw" }).click();
   await move(0.2);
