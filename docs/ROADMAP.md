@@ -60,7 +60,7 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 
 ## Phase 5 — Framework support
 
-- [ ] Add a thin React adapter.
+- [x] Add thin, independent React adapter entry points.
 - [ ] Add adapters for other frameworks based on demand.
 - [ ] Keep all behavior inside the framework-independent engines.
 
