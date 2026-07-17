@@ -15,6 +15,8 @@ const formation = createFormation({
   observe: true,
 });
 
+formation.withdraw();
+formation.form(document.querySelector("button"));
 formation.refresh();
 formation.destroy();
 ```
@@ -27,4 +29,4 @@ Repeated and nested controllers share one internal ownership record per element.
 
 ## Lifecycle contract
 
-The Formation lifecycle contract uses explicit `unformed`, `locating`, `constructing`, `enclosed`, `revealing`, `formed`, `withdrawing`, and `deconstructing` phases. The internal transition table defines complete form and withdraw paths, terminal no-ops, and deterministic reversals when an opposing command arrives during an active transition.
+The Formation lifecycle contract uses explicit `unformed`, `locating`, `constructing`, `enclosed`, `revealing`, `formed`, `withdrawing`, and `deconstructing` phases. `form()` and `withdraw()` act on the full managed set or one managed element. Phase-driven CSS transitions let an opposing command reverse the active Line Push transition from its current visual position.

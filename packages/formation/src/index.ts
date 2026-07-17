@@ -1,3 +1,9 @@
+import {
+  nextFormationPhase,
+  type FormationCommand,
+  type FormationPhase,
+} from "./lifecycle.js";
+
 export type { FormationCommand, FormationPhase } from "./lifecycle.js";
 
 export type FormationProfile = "line-push";
@@ -15,6 +21,8 @@ export type FormationOptions = {
 export type FormationController = {
   readonly elements: readonly HTMLElement[];
   readonly profile: FormationProfile;
+  form(target?: HTMLElement): void;
+  withdraw(target?: HTMLElement): void;
   refresh(): number;
   destroy(): void;
 };
@@ -23,19 +31,109 @@ type ElementSnapshot = {
   hadBaseClass: boolean;
   hadProfileClass: boolean;
   formationAttribute: string | null;
+  phaseAttribute: string | null;
 };
 
 type ElementOwnership = {
+  cancelInitialForm?: () => void;
   owners: Set<object>;
+  phase: FormationPhase;
   snapshot: ElementSnapshot;
 };
 
 const BASE_CLASS = "dynt-formation";
 const DEFAULT_EXCLUDE_SELECTOR = "[data-dynt-ignore]";
+const PHASE_ATTRIBUTE = "data-dynt-formation-phase";
 const PROFILE_CLASSES: Record<FormationProfile, string> = {
   "line-push": "dynt-formation--line-push",
 };
 const ELEMENT_OWNERSHIP = new WeakMap<HTMLElement, ElementOwnership>();
+
+function setFormationPhase(
+  element: HTMLElement,
+  ownership: ElementOwnership,
+  phase: FormationPhase,
+) {
+  ownership.phase = phase;
+  element.setAttribute(PHASE_ATTRIBUTE, phase);
+}
+
+function cancelInitialForm(ownership: ElementOwnership) {
+  const cancel = ownership.cancelInitialForm;
+  ownership.cancelInitialForm = undefined;
+  cancel?.();
+}
+
+function runFormationCommand(
+  element: HTMLElement,
+  ownership: ElementOwnership,
+  command: FormationCommand,
+) {
+  cancelInitialForm(ownership);
+  const { phase } = ownership;
+
+  if (command === "form") {
+    if (
+      phase === "locating"
+      || phase === "constructing"
+      || phase === "enclosed"
+      || phase === "revealing"
+      || phase === "formed"
+    ) {
+      return;
+    }
+
+    let nextPhase = nextFormationPhase(phase, command);
+    setFormationPhase(element, ownership, nextPhase);
+
+    if (nextPhase === "locating") {
+      nextPhase = nextFormationPhase(nextPhase, command);
+      setFormationPhase(element, ownership, nextPhase);
+    } else if (nextPhase === "revealing") {
+      nextPhase = nextFormationPhase(nextPhase, command);
+      setFormationPhase(element, ownership, nextPhase);
+    }
+
+    return;
+  }
+
+  if (phase === "unformed" || phase === "withdrawing" || phase === "deconstructing") {
+    return;
+  }
+
+  let nextPhase = nextFormationPhase(phase, command);
+  setFormationPhase(element, ownership, nextPhase);
+
+  if (nextPhase === "withdrawing") {
+    nextPhase = nextFormationPhase(nextPhase, command);
+    setFormationPhase(element, ownership, nextPhase);
+  }
+}
+
+function scheduleInitialForm(
+  element: HTMLElement,
+  ownership: ElementOwnership,
+  view: Window | null | undefined,
+) {
+  let cancelled = false;
+  let frame: number | undefined;
+  const start = () => {
+    ownership.cancelInitialForm = undefined;
+    if (cancelled || ELEMENT_OWNERSHIP.get(element) !== ownership) return;
+    runFormationCommand(element, ownership, "form");
+  };
+
+  if (view?.requestAnimationFrame) {
+    frame = view.requestAnimationFrame(start);
+  } else {
+    queueMicrotask(start);
+  }
+
+  ownership.cancelInitialForm = () => {
+    cancelled = true;
+    if (frame !== undefined) view?.cancelAnimationFrame(frame);
+  };
+}
 
 function validateSelector(root: FormationRoot, selector: string, label: string) {
   try {
@@ -124,15 +222,20 @@ export function createFormation({
       hadBaseClass: element.classList.contains(BASE_CLASS),
       hadProfileClass: element.classList.contains(profileClass),
       formationAttribute: element.getAttribute("data-dynt-formation"),
+      phaseAttribute: element.getAttribute(PHASE_ATTRIBUTE),
     };
-    ELEMENT_OWNERSHIP.set(element, {
+    const ownership: ElementOwnership = {
       owners: new Set([owner]),
+      phase: "unformed",
       snapshot,
-    });
+    };
+    ELEMENT_OWNERSHIP.set(element, ownership);
     elements.add(element);
 
     element.classList.add(BASE_CLASS, profileClass);
     element.setAttribute("data-dynt-formation", profile);
+    element.setAttribute(PHASE_ATTRIBUTE, "unformed");
+    scheduleInitialForm(element, ownership, view);
     return true;
   }
 
@@ -145,6 +248,12 @@ export function createFormation({
     } else {
       element.setAttribute("data-dynt-formation", snapshot.formationAttribute);
     }
+
+    if (snapshot.phaseAttribute === null) {
+      element.removeAttribute(PHASE_ATTRIBUTE);
+    } else {
+      element.setAttribute(PHASE_ATTRIBUTE, snapshot.phaseAttribute);
+    }
   }
 
   function release(element: HTMLElement) {
@@ -156,8 +265,61 @@ export function createFormation({
     ownership.owners.delete(owner);
     if (ownership.owners.size > 0) return;
 
+    cancelInitialForm(ownership);
     restore(element, ownership.snapshot);
     ELEMENT_OWNERSHIP.delete(element);
+  }
+
+  function commandTargets(target: HTMLElement | undefined) {
+    if (target === undefined) return Array.from(elements);
+    if (!elements.has(target)) {
+      throw new TypeError("DYNT Formation commands require a managed target.");
+    }
+    return [target];
+  }
+
+  function runCommand(command: FormationCommand, target?: HTMLElement) {
+    if (destroyed) return;
+
+    for (const element of commandTargets(target)) {
+      const ownership = ELEMENT_OWNERSHIP.get(element);
+      if (ownership) runFormationCommand(element, ownership, command);
+    }
+  }
+
+  function handleTransitionEnd(event: Event) {
+    const transition = event as TransitionEvent;
+    const element = event.target as HTMLElement | null;
+    if (
+      transition.propertyName !== "transform"
+      || (transition.pseudoElement !== "::before" && transition.pseudoElement !== "::after")
+      || !element
+      || element.nodeType !== 1
+      || !elements.has(element)
+    ) {
+      return;
+    }
+
+    const ownership = ELEMENT_OWNERSHIP.get(element);
+    if (!ownership) return;
+
+    if (ownership.phase === "constructing" && transition.pseudoElement === "::after") {
+      let nextPhase = nextFormationPhase(ownership.phase, "form");
+      while (true) {
+        setFormationPhase(element, ownership, nextPhase);
+        if (nextPhase === "formed") break;
+        nextPhase = nextFormationPhase(nextPhase, "form");
+      }
+    } else if (
+      ownership.phase === "deconstructing"
+      && transition.pseudoElement === "::before"
+    ) {
+      setFormationPhase(
+        element,
+        ownership,
+        nextFormationPhase(ownership.phase, "withdraw"),
+      );
+    }
   }
 
   function refresh() {
@@ -188,7 +350,17 @@ export function createFormation({
     }
   }
 
-  function scheduleRefresh() {
+  function scheduleRefresh(records?: MutationRecord[]) {
+    if (
+      records?.every((record) => (
+        record.type === "attributes"
+        && record.attributeName === PHASE_ATTRIBUTE
+        && elements.has(record.target as HTMLElement)
+      ))
+    ) {
+      return;
+    }
+
     if (destroyed || refreshScheduled) return;
     refreshScheduled = true;
 
@@ -209,12 +381,14 @@ export function createFormation({
     destroyed = true;
     observer?.disconnect();
     observer = null;
+    root.removeEventListener("transitionend", handleTransitionEnd);
 
     for (const element of Array.from(elements)) {
       release(element);
     }
   }
 
+  root.addEventListener("transitionend", handleTransitionEnd);
   refresh();
 
   if (observe) {
@@ -232,6 +406,12 @@ export function createFormation({
       return Array.from(elements);
     },
     profile,
+    form(target) {
+      runCommand("form", target);
+    },
+    withdraw(target) {
+      runCommand("withdraw", target);
+    },
     refresh,
     destroy,
   };

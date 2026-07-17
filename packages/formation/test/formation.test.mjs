@@ -8,6 +8,15 @@ function flushMutations(window) {
   return new Promise((resolve) => window.setTimeout(resolve, 0));
 }
 
+function dispatchTransformTransition(window, element, pseudoElement) {
+  const event = new window.Event("transitionend", { bubbles: true });
+  Object.defineProperties(event, {
+    propertyName: { value: "transform" },
+    pseudoElement: { value: pseudoElement },
+  });
+  element.dispatchEvent(event);
+}
+
 test("enhances only matching elements inside the supplied root", () => {
   const window = new Window();
   const document = window.document;
@@ -160,6 +169,60 @@ test("nested controllers share one enhancement independent of initialization ord
   }
 });
 
+test("form and withdraw complete and reverse the Line Push lifecycle", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><button>Button</button></main>";
+  const button = document.querySelector("button");
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "button",
+  });
+
+  controller.form(button);
+  assert.equal(button.dataset.dyntFormationPhase, "constructing");
+
+  controller.withdraw(button);
+  assert.equal(button.dataset.dyntFormationPhase, "deconstructing");
+
+  controller.form(button);
+  assert.equal(button.dataset.dyntFormationPhase, "constructing");
+  dispatchTransformTransition(window, button, "::after");
+  assert.equal(button.dataset.dyntFormationPhase, "formed");
+
+  controller.withdraw(button);
+  assert.equal(button.dataset.dyntFormationPhase, "deconstructing");
+  dispatchTransformTransition(window, button, "::before");
+  assert.equal(button.dataset.dyntFormationPhase, "unformed");
+});
+
+test("lifecycle commands target one element or the full managed set", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = `
+    <main><button id="first">First</button><button id="second">Second</button></main>
+    <button id="outside">Outside</button>
+  `;
+  const first = document.querySelector("#first");
+  const second = document.querySelector("#second");
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "button",
+  });
+
+  controller.form(first);
+  assert.equal(first.dataset.dyntFormationPhase, "constructing");
+  assert.equal(second.dataset.dyntFormationPhase, "unformed");
+
+  controller.form();
+  assert.equal(first.dataset.dyntFormationPhase, "constructing");
+  assert.equal(second.dataset.dyntFormationPhase, "constructing");
+  assert.throws(
+    () => controller.withdraw(document.querySelector("#outside")),
+    /managed target/,
+  );
+});
+
 test("observe enhances synchronous insertions in one batched refresh", async () => {
   const window = new Window();
   const document = window.document;
@@ -297,7 +360,7 @@ test("destroy restores the classes and attribute owned by the application", () =
   const window = new Window();
   const document = window.document;
   document.body.innerHTML = `
-    <button class="dynt-formation existing" data-dynt-formation="custom">Button</button>
+    <button class="dynt-formation existing" data-dynt-formation="custom" data-dynt-formation-phase="application">Button</button>
   `;
   const button = document.querySelector("button");
   const controller = createFormation({ root: document, selector: "button" });
@@ -307,6 +370,7 @@ test("destroy restores the classes and attribute owned by the application", () =
   assert.equal(button.classList.contains("dynt-formation"), true);
   assert.equal(button.classList.contains("dynt-formation--line-push"), false);
   assert.equal(button.getAttribute("data-dynt-formation"), "custom");
+  assert.equal(button.getAttribute("data-dynt-formation-phase"), "application");
   assert.equal(controller.elements.length, 0);
 });
 
