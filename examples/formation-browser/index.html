@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DYNT Formation browser verification</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="../../packages/formation/src/styles.css">
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: system-ui, sans-serif;
+      }
+
+      body {
+        background: #090b10;
+        color: #e7edf7;
+        margin: 0;
+        padding: 2rem;
+      }
+
+      main,
+      nav,
+      .controls {
+        display: grid;
+        gap: 1rem;
+      }
+
+      main {
+        margin-block: 2rem;
+        max-width: 44rem;
+      }
+
+      .target {
+        --dynt-formation-duration: 120ms;
+        --dynt-line-color: #67e8f9;
+        background: #111827;
+        border: 0;
+        color: inherit;
+        display: block;
+        padding: 1rem;
+      }
+
+      a,
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .controls {
+        grid-template-columns: repeat(3, max-content);
+      }
+
+      output {
+        display: block;
+        font-family: ui-monospace, monospace;
+        margin-top: 1rem;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Formation browser verification</h1>
+
+    <div class="controls">
+      <button id="form-all" type="button">Form all</button>
+      <button id="withdraw-all" type="button">Withdraw all</button>
+      <button id="add-target" type="button">Add target</button>
+    </div>
+
+    <main id="app">
+      <section id="section-target" class="target">
+        <h2>Section surface</h2>
+        <p>The host section remains structurally unchanged.</p>
+      </section>
+
+      <nav aria-label="Verification links">
+        <a id="link-target" class="target" href="#verified">Focusable link</a>
+      </nav>
+
+      <button id="button-target" class="target" type="button">Focusable button</button>
+
+      <label class="target" for="input-target">
+        Text input
+        <input id="input-target" type="text" value="Editable value">
+      </label>
+    </main>
+
+    <output id="status" aria-live="polite"></output>
+
+    <script type="module">
+      import { createFormation } from "../../packages/formation/dist/index.js";
+
+      const app = document.querySelector("#app");
+      const status = document.querySelector("#status");
+      const formation = createFormation({
+        root: app,
+        selector: ".target",
+        observe: true,
+      });
+
+      function renderStatus() {
+        status.textContent = formation.elements
+          .map((element) => `${element.id || element.tagName.toLowerCase()}:${element.dataset.dyntFormationPhase}`)
+          .join("\n");
+      }
+
+      function afterTransition() {
+        window.setTimeout(renderStatus, 220);
+      }
+
+      document.querySelector("#form-all").addEventListener("click", () => {
+        formation.form();
+        renderStatus();
+        afterTransition();
+      });
+      document.querySelector("#withdraw-all").addEventListener("click", () => {
+        formation.withdraw();
+        renderStatus();
+        afterTransition();
+      });
+      document.querySelector("#add-target").addEventListener("click", () => {
+        const article = document.createElement("article");
+        article.id = `dynamic-${formation.elements.length + 1}`;
+        article.className = "target";
+        article.textContent = "Dynamically observed article";
+        app.append(article);
+        afterTransition();
+      });
+      app.addEventListener("transitionend", renderStatus);
+      renderStatus();
+      afterTransition();
+    </script>
+  </body>
+</html>
