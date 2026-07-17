@@ -88,6 +88,10 @@
         Text input
         <input id="input-target" type="text" value="Editable value">
       </label>
+
+      <article id="line-rise-target" class="target line-rise-target">
+        Line Rise surface
+      </article>
     </main>
 
     <output id="status" aria-live="polite"></output>
@@ -97,14 +101,22 @@
 
       const app = document.querySelector("#app");
       const status = document.querySelector("#status");
-      const formation = createFormation({
+      const linePush = createFormation({
         root: app,
-        selector: ".target",
+        selector: ".target:not(.line-rise-target)",
         observe: true,
       });
+      const lineRise = createFormation({
+        root: app,
+        selector: ".line-rise-target",
+        profile: "line-rise",
+        observe: true,
+      });
+      const formations = [linePush, lineRise];
 
       function renderStatus() {
-        status.textContent = formation.elements
+        status.textContent = formations
+          .flatMap((formation) => formation.elements)
           .map((element) => `${element.id || element.tagName.toLowerCase()}:${element.dataset.dyntFormationPhase}`)
           .join("\n");
       }
@@ -114,18 +126,18 @@
       }
 
       document.querySelector("#form-all").addEventListener("click", () => {
-        formation.form();
+        formations.forEach((formation) => formation.form());
         renderStatus();
         afterTransition();
       });
       document.querySelector("#withdraw-all").addEventListener("click", () => {
-        formation.withdraw();
+        formations.forEach((formation) => formation.withdraw());
         renderStatus();
         afterTransition();
       });
       document.querySelector("#add-target").addEventListener("click", () => {
         const article = document.createElement("article");
-        article.id = `dynamic-${formation.elements.length + 1}`;
+        article.id = `dynamic-${formations.flatMap((formation) => formation.elements).length + 1}`;
         article.className = "target";
         article.textContent = "Dynamically observed article";
         app.append(article);

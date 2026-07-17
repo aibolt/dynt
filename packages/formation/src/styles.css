@@ -7,7 +7,9 @@
 }
 
 :where(.dynt-formation--line-push)::before,
-:where(.dynt-formation--line-push)::after {
+:where(.dynt-formation--line-push)::after,
+:where(.dynt-formation--line-rise)::before,
+:where(.dynt-formation--line-rise)::after {
   content: "";
   inset: 0;
   pointer-events: none;
@@ -51,9 +53,44 @@
   transition-delay: calc(var(--dynt-formation-duration) * 0.35);
 }
 
+:where(.dynt-formation--line-rise)::before {
+  border-inline: var(--dynt-line-width) solid var(--dynt-line-color);
+  transform: scaleY(0);
+  transform-origin: bottom;
+}
+
+:where(.dynt-formation--line-rise)::after {
+  border-block: var(--dynt-line-width) solid var(--dynt-line-color);
+  transform: scaleX(0);
+  transform-origin: right;
+}
+
+:where(.dynt-formation--line-rise[data-dynt-formation-phase="constructing"])::before,
+:where(.dynt-formation--line-rise[data-dynt-formation-phase="enclosed"])::before,
+:where(.dynt-formation--line-rise[data-dynt-formation-phase="revealing"])::before,
+:where(.dynt-formation--line-rise[data-dynt-formation-phase="formed"])::before,
+:where(.dynt-formation--line-rise[data-dynt-formation-phase="withdrawing"])::before {
+  transform: scaleY(1);
+}
+
+:where(.dynt-formation--line-rise[data-dynt-formation-phase="constructing"])::after,
+:where(.dynt-formation--line-rise[data-dynt-formation-phase="enclosed"])::after,
+:where(.dynt-formation--line-rise[data-dynt-formation-phase="revealing"])::after,
+:where(.dynt-formation--line-rise[data-dynt-formation-phase="formed"])::after,
+:where(.dynt-formation--line-rise[data-dynt-formation-phase="withdrawing"])::after {
+  transform: scaleX(1);
+}
+
+:where(.dynt-formation--line-rise[data-dynt-formation-phase="constructing"])::after,
+:where(.dynt-formation--line-rise[data-dynt-formation-phase="deconstructing"])::before {
+  transition-delay: calc(var(--dynt-formation-duration) * 0.35);
+}
+
 @media (prefers-reduced-motion: reduce) {
   :where(.dynt-formation--line-push)::before,
-  :where(.dynt-formation--line-push)::after {
+  :where(.dynt-formation--line-push)::after,
+  :where(.dynt-formation--line-rise)::before,
+  :where(.dynt-formation--line-rise)::after {
     transition-delay: 0ms;
     transition-duration: 1ms;
   }

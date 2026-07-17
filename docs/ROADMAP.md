@@ -27,10 +27,10 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 
 ## Phase 2 — Formation system
 
-- [ ] Add the profile registry and lifecycle contract.
+- [x] Add the profile registry and lifecycle contract.
 - [ ] Add local configuration overrides.
 - [ ] Add responsive measurement and reduced-motion behavior.
-- [ ] Add additional formations only after Line Push passes its contract tests.
+- [x] Add an additional formation after Line Push passes its contract tests.
 
 ## Phase 2.5 — Formation hardening
 

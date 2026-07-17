@@ -3,24 +3,39 @@ import {
   type FormationCommand,
   type FormationPhase,
 } from "./lifecycle.js";
+import {
+  defaultFormationProfiles,
+  type FormationProfile,
+  type FormationProfileDefinition,
+  type FormationProfileRegistry,
+} from "./profiles.js";
 
 export type { FormationCommand, FormationPhase } from "./lifecycle.js";
-
-export type FormationProfile = "line-push";
+export {
+  createFormationProfileRegistry,
+  defaultFormationProfiles,
+} from "./profiles.js";
+export type {
+  FormationProfile,
+  FormationProfileDefinition,
+  FormationProfileRegistry,
+  FormationTransitionHook,
+} from "./profiles.js";
 
 export type FormationRoot = Document | DocumentFragment | HTMLElement;
 
-export type FormationOptions = {
+export type FormationOptions<ProfileName extends string = FormationProfile> = {
   root: FormationRoot;
   selector: string;
   exclude?: string;
-  profile?: FormationProfile;
+  profile?: ProfileName;
+  profiles?: FormationProfileRegistry<ProfileName>;
   observe?: boolean;
 };
 
-export type FormationController = {
+export type FormationController<ProfileName extends string = FormationProfile> = {
   readonly elements: readonly HTMLElement[];
-  readonly profile: FormationProfile;
+  readonly profile: ProfileName;
   form(target?: HTMLElement): void;
   withdraw(target?: HTMLElement): void;
   refresh(): number;
@@ -38,6 +53,7 @@ type ElementOwnership = {
   cancelInitialForm?: () => void;
   owners: Set<object>;
   phase: FormationPhase;
+  profile: FormationProfileDefinition;
   snapshot: ElementSnapshot;
 };
 
@@ -46,9 +62,6 @@ const DEFAULT_EXCLUDE_SELECTOR = "[data-dynt-ignore]";
 const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 const PHASE_ATTRIBUTE = "data-dynt-formation-phase";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
-const PROFILE_CLASSES: Record<FormationProfile, string> = {
-  "line-push": "dynt-formation--line-push",
-};
 const ELEMENT_OWNERSHIP = new WeakMap<HTMLElement, ElementOwnership>();
 
 function isFormationRoot(value: unknown): value is FormationRoot {
@@ -236,13 +249,14 @@ function findTargets(root: FormationRoot, selector: string, excludeSelector: str
   return targets;
 }
 
-export function createFormation({
+export function createFormation<ProfileName extends string = FormationProfile>({
   root,
   selector,
   exclude,
-  profile = "line-push",
+  profile = "line-push" as ProfileName,
+  profiles = defaultFormationProfiles as FormationProfileRegistry<ProfileName>,
   observe = false,
-}: FormationOptions): FormationController {
+}: FormationOptions<ProfileName>): FormationController<ProfileName> {
   if (!isFormationRoot(root)) {
     throw new TypeError("DYNT Formation requires a Document, DocumentFragment, or HTML element root.");
   }
@@ -255,11 +269,13 @@ export function createFormation({
     throw new TypeError("DYNT Formation requires a non-empty exclude selector.");
   }
 
-  if (!Object.hasOwn(PROFILE_CLASSES, profile)) {
+  const profileDefinition = profiles.get(profile);
+  if (!profileDefinition) {
     throw new TypeError(`DYNT Formation received an unknown profile: ${String(profile)}.`);
   }
 
-  const profileClass = PROFILE_CLASSES[profile];
+  const selectedProfile = profileDefinition;
+  const profileClass = selectedProfile.className;
   const excludeSelector = exclude
     ? `${DEFAULT_EXCLUDE_SELECTOR}, ${exclude}`
     : DEFAULT_EXCLUDE_SELECTOR;
@@ -283,6 +299,9 @@ export function createFormation({
 
     const existingOwnership = ELEMENT_OWNERSHIP.get(element);
     if (existingOwnership) {
+      if (existingOwnership.profile !== selectedProfile) {
+        throw new TypeError("DYNT Formation cannot apply different profiles to the same target.");
+      }
       existingOwnership.owners.add(owner);
       elements.add(element);
       return true;
@@ -297,13 +316,14 @@ export function createFormation({
     const ownership: ElementOwnership = {
       owners: new Set([owner]),
       phase: "unformed",
+      profile: selectedProfile,
       snapshot,
     };
     ELEMENT_OWNERSHIP.set(element, ownership);
     elements.add(element);
 
     element.classList.add(BASE_CLASS, profileClass);
-    element.setAttribute("data-dynt-formation", profile);
+    element.setAttribute("data-dynt-formation", selectedProfile.name);
     element.setAttribute(PHASE_ATTRIBUTE, "unformed");
     scheduleInitialForm(element, ownership, view);
     return true;
@@ -363,9 +383,7 @@ export function createFormation({
     const transition = event as TransitionEvent;
     const element = event.target as HTMLElement | null;
     if (
-      transition.propertyName !== "transform"
-      || (transition.pseudoElement !== "::before" && transition.pseudoElement !== "::after")
-      || !element
+      !element
       || element.nodeType !== 1
       || !elements.has(element)
     ) {
@@ -375,11 +393,19 @@ export function createFormation({
     const ownership = ELEMENT_OWNERSHIP.get(element);
     if (!ownership) return;
 
-    if (ownership.phase === "constructing" && transition.pseudoElement === "::after") {
+    const formComplete = ownership.profile.lifecycle.formComplete;
+    const withdrawComplete = ownership.profile.lifecycle.withdrawComplete;
+
+    if (
+      ownership.phase === "constructing"
+      && transition.propertyName === formComplete.propertyName
+      && transition.pseudoElement === formComplete.pseudoElement
+    ) {
       advanceToTerminal(element, ownership, "form", "formed");
     } else if (
       ownership.phase === "deconstructing"
-      && transition.pseudoElement === "::before"
+      && transition.propertyName === withdrawComplete.propertyName
+      && transition.pseudoElement === withdrawComplete.pseudoElement
     ) {
       setFormationPhase(
         element,
@@ -399,6 +425,13 @@ export function createFormation({
       let enhancedCount = 0;
       const targets = findTargets(root, selector, excludeSelector);
       const targetSet = new Set(targets);
+
+      for (const element of targets) {
+        const ownership = ELEMENT_OWNERSHIP.get(element);
+        if (ownership && ownership.profile !== selectedProfile) {
+          throw new TypeError("DYNT Formation cannot apply different profiles to the same target.");
+        }
+      }
 
       for (const element of elements) {
         if (targetSet.has(element)) continue;
@@ -455,8 +488,8 @@ export function createFormation({
     }
   }
 
-  root.addEventListener("transitionend", handleTransitionEnd);
   refresh();
+  root.addEventListener("transitionend", handleTransitionEnd);
 
   if (observe) {
     if (!view?.MutationObserver) {
