@@ -16,15 +16,21 @@ test("combined mode suppresses Kinetic until Formation is formed", async ({ page
   await expect.poll(() => section.evaluate((element) => (
     Math.abs(Number.parseFloat(element.style.getPropertyValue("--dynt-tilt-y")))
   ))).toBeGreaterThan(0);
-  const coupledTransforms = await section.evaluate((element) => ({
+  const motionOwnership = await section.evaluate((element) => ({
     field: getComputedStyle(element.querySelector("[data-dynt-kinetic-layer]")).transform,
     horizontalRails: getComputedStyle(element, "::before").transform,
+    reactorX: Number.parseFloat(
+      element.querySelector(".dynt-kinetic__reactor").style.getPropertyValue("--dynt-reactor-x"),
+    ),
     verticalRails: getComputedStyle(element, "::after").transform,
   }));
-  expect(coupledTransforms.horizontalRails).toBe(coupledTransforms.field);
-  expect(coupledTransforms.verticalRails).toBe(coupledTransforms.field);
+  expect(motionOwnership.horizontalRails).toBe("none");
+  expect(motionOwnership.verticalRails).toBe("none");
+  expect(motionOwnership.field).toBe("none");
+  expect(Math.abs(motionOwnership.reactorX)).toBeGreaterThan(0);
 
   await page.getByRole("button", { name: "Withdraw" }).click();
+  await expect(page.locator("[data-dynt-flow-direction='withdraw']").first()).toHaveCount(1);
   await move(0.2);
   await expect(section).toHaveCSS("--dynt-pressure", "0.0000");
   await expect(section).toHaveCSS("--dynt-tilt-y", "0.000deg");

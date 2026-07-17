@@ -15,6 +15,10 @@ test("Kinetic routes input locally, pauses, resumes, and adopts dynamic targets"
     Number.parseFloat(element.style.getPropertyValue("--dynt-pressure"))
   ))).toBeGreaterThan(0);
   await expect(parent).toHaveCSS("--dynt-tilt-y", "0.000deg");
+  await expect.poll(() => nested.locator(".dynt-kinetic__reactor").evaluate((element) => (
+    Math.abs(Number.parseFloat(element.style.getPropertyValue("--dynt-reactor-x")))
+  ))).toBeGreaterThan(0);
+  await expect(nested.locator("[data-dynt-kinetic-layer]")).toHaveCSS("transform", "none");
 
   await page.getByRole("button", { name: "Pause" }).click();
   await expect(nested).toHaveCSS("--dynt-tilt-y", "0.000deg");
@@ -109,6 +113,9 @@ test("Kinetic renders bounded local cells and directional flow in every geometry
   await nested.dispatchEvent("pointerdown", pointer);
   await page.waitForTimeout(32);
   await expect.poll(() => canvas.getAttribute("data-dynt-flow-cells").then(Number)).toBeGreaterThan(0);
+  await expect.poll(() => nested.locator(".dynt-kinetic__reactor").evaluate((element) => (
+    element.getAnimations().length
+  ))).toBeGreaterThan(0);
   expect(Number(await canvas.getAttribute("data-dynt-flow-cells"))).toBeLessThanOrEqual(420);
   expect(await canvas.evaluate((element) => (
     element.width / Number.parseFloat(element.style.width)

@@ -25,6 +25,18 @@ test("Formation viewport flow travels from the window and stages targets", async
     "formed",
   );
   await expect(page.locator("[data-dynt-formation-flow]")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Withdraw all" }).click();
+  const reverseFlight = layer.locator("[data-dynt-flow-direction='withdraw']").first();
+  await expect(reverseFlight).toHaveCount(1);
+  await expect(reverseFlight.locator(".dynt-formation-flow-line").first()).toHaveCSS(
+    "animation-direction",
+    "reverse",
+  );
+  await expect(page.locator("#section-target")).toHaveAttribute(
+    "data-dynt-formation-phase",
+    "unformed",
+  );
 });
 
 test("Formation lifecycle preserves controls, focus, input, and dynamic targets", async ({ page }) => {
@@ -88,8 +100,8 @@ test("Formation preserves accessible controls and responsive geometry", async ({
     before: getComputedStyle(element, "::before").transform,
     beforeLeft: getComputedStyle(element, "::before").left,
   }));
-  expect(geometry.before).toBe(geometry.after);
-  expect(geometry.before).not.toBe("none");
+  expect(geometry.before).toBe("none");
+  expect(geometry.after).toBe("none");
   expect(geometry.beforeLeft).toBe("-14px");
   expect(geometry.afterTop).toBe("-14px");
 });

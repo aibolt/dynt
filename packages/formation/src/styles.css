@@ -54,10 +54,6 @@
   width: 0;
 }
 
-:where(.dynt-formation-flow[data-dynt-flow-direction="withdraw"] .dynt-formation-flow-line) {
-  animation-direction: reverse;
-}
-
 :where(.dynt-formation-flow-line--top) {
   animation: dynt-flow-from-left var(--dynt-flow-duration) var(--dynt-flow-easing) both;
   left: calc(var(--dynt-flow-x-length) * -1);
@@ -80,6 +76,10 @@
   animation: dynt-flow-from-bottom var(--dynt-flow-duration) var(--dynt-flow-easing) both;
   bottom: calc(var(--dynt-flow-y-length) * -1);
   left: var(--dynt-flow-target-right);
+}
+
+:where(.dynt-formation-flow[data-dynt-flow-direction="withdraw"] .dynt-formation-flow-line) {
+  animation-direction: reverse;
 }
 
 @keyframes dynt-flow-from-left {
