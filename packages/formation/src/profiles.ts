@@ -129,11 +129,11 @@ const BUILTIN_PROFILES = [
     ],
     lifecycle: {
       formComplete: {
-        propertyName: "transform",
+        propertyName: "clip-path",
         pseudoElement: "::after",
       },
       withdrawComplete: {
-        propertyName: "transform",
+        propertyName: "clip-path",
         pseudoElement: "::before",
       },
     },
@@ -161,11 +161,11 @@ const BUILTIN_PROFILES = [
     ],
     lifecycle: {
       formComplete: {
-        propertyName: "transform",
+        propertyName: "clip-path",
         pseudoElement: "::after",
       },
       withdrawComplete: {
-        propertyName: "transform",
+        propertyName: "clip-path",
         pseudoElement: "::before",
       },
     },

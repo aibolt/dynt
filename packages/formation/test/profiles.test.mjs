@@ -11,7 +11,7 @@ import {
 function dispatchTransformTransition(window, element, pseudoElement) {
   const event = new window.Event("transitionend", { bubbles: true });
   Object.defineProperties(event, {
-    propertyName: { value: "transform" },
+    propertyName: { value: "clip-path" },
     pseudoElement: { value: pseudoElement },
   });
   element.dispatchEvent(event);

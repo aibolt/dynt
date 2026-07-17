@@ -53,7 +53,7 @@ function dispatchPointer(window, element) {
 function completeFormation(window, element) {
   const event = new window.Event("transitionend", { bubbles: true });
   Object.defineProperties(event, {
-    propertyName: { value: "transform" },
+    propertyName: { value: "clip-path" },
     pseudoElement: { value: "::after" },
   });
   element.dispatchEvent(event);
