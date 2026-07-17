@@ -361,6 +361,33 @@ test("damped motion stops scheduling after reaching rest", () => {
   controller.destroy();
 });
 
+test("surface and active-reaction limits are enforced deterministically", () => {
+  const window = new Window();
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = `
+    <main><button id="one">One</button><button id="two">Two</button><button id="three">Three</button></main>
+  `;
+  const buttons = Array.from(document.querySelectorAll("button"));
+  buttons.forEach((button) => setRectangle(button));
+  const controller = createKinetic({
+    root: document.querySelector("main"),
+    selector: "button",
+    limits: { maxActive: 1, maxSurfaces: 2 },
+    motion: { response: 0.5 },
+  });
+
+  assert.deepEqual(controller.elements.map((element) => element.id), ["one", "two"]);
+  controller.impact(buttons[0]);
+  controller.impact(buttons[1]);
+  assert.equal(frames.count, 1);
+  assert.equal(buttons[0].style.getPropertyValue("--dynt-pressure"), "0.0000");
+
+  controller.update({ limits: { maxActive: 2, maxSurfaces: 3 } });
+  assert.deepEqual(controller.elements.map((element) => element.id), ["one", "two", "three"]);
+  controller.destroy();
+});
+
 test("drift runs only during active input and decays back to idle", () => {
   const window = new Window();
   const frames = installAnimationFrames(window);
@@ -559,5 +586,13 @@ test("pause, resume, destroy, and input validation are idempotent", () => {
       motion: { waveDuration: 50 },
     }),
     /waveDuration must be between 100 and 2000/,
+  );
+  assert.throws(
+    () => createKinetic({
+      root: document,
+      selector: "button",
+      limits: { maxActive: 0 },
+    }),
+    /maxActive must be an integer between 1 and 1000/,
   );
 });

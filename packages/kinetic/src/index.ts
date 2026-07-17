@@ -15,6 +15,11 @@ export type KineticMotion = Readonly<{
   waveDuration?: number;
 }>;
 
+export type KineticLimits = Readonly<{
+  maxActive?: number;
+  maxSurfaces?: number;
+}>;
+
 export type KineticImpactInput = Readonly<{
   pressure?: number;
   x?: number;
@@ -23,6 +28,7 @@ export type KineticImpactInput = Readonly<{
 
 export type KineticUpdateOptions = Readonly<{
   effects?: KineticEffects;
+  limits?: KineticLimits;
   motion?: KineticMotion;
 }>;
 
@@ -32,6 +38,7 @@ export type KineticOptions = Readonly<{
   exclude?: string;
   observe?: boolean;
   effects?: KineticEffects;
+  limits?: KineticLimits;
   motion?: KineticMotion;
 }>;
 
@@ -50,6 +57,8 @@ type KineticConfiguration = Readonly<{
   content: boolean;
   drift: boolean;
   driftAmount: number;
+  maxActive: number;
+  maxSurfaces: number;
   maxTilt: number;
   pressure: boolean;
   response: number;
@@ -127,6 +136,8 @@ const DEFAULT_CONFIGURATION: KineticConfiguration = Object.freeze({
   content: false,
   drift: false,
   driftAmount: 1.5,
+  maxActive: 24,
+  maxSurfaces: 250,
   maxTilt: 8,
   pressure: true,
   response: 0.18,
@@ -170,6 +181,7 @@ const ELEMENT_OWNERSHIP = new WeakMap<HTMLElement, ElementOwnership>();
 function normalizeConfiguration(
   effects: KineticEffects | undefined,
   motion: KineticMotion | undefined,
+  limits: KineticLimits | undefined,
   base = DEFAULT_CONFIGURATION,
 ): KineticConfiguration {
   if (effects !== undefined && (!effects || typeof effects !== "object" || Array.isArray(effects))) {
@@ -177,6 +189,9 @@ function normalizeConfiguration(
   }
   if (motion !== undefined && (!motion || typeof motion !== "object" || Array.isArray(motion))) {
     throw new TypeError("DYNT Kinetic motion must be an object.");
+  }
+  if (limits !== undefined && (!limits || typeof limits !== "object" || Array.isArray(limits))) {
+    throw new TypeError("DYNT Kinetic limits must be an object.");
   }
   for (const name of Object.keys(effects ?? {})) {
     if (
@@ -199,6 +214,11 @@ function normalizeConfiguration(
       throw new TypeError(`DYNT Kinetic received an unknown motion option: ${name}.`);
     }
   }
+  for (const name of Object.keys(limits ?? {})) {
+    if (name !== "maxActive" && name !== "maxSurfaces") {
+      throw new TypeError(`DYNT Kinetic received an unknown limit: ${name}.`);
+    }
+  }
 
   const content = effects?.content ?? base.content;
   const drift = effects?.drift ?? base.drift;
@@ -206,6 +226,8 @@ function normalizeConfiguration(
   const tilt = effects?.tilt ?? base.tilt;
   const wave = effects?.wave ?? base.wave;
   const driftAmount = motion?.drift ?? base.driftAmount;
+  const maxActive = limits?.maxActive ?? base.maxActive;
+  const maxSurfaces = limits?.maxSurfaces ?? base.maxSurfaces;
   const maxTilt = motion?.maxTilt ?? base.maxTilt;
   const response = motion?.response ?? base.response;
   const waveDuration = motion?.waveDuration ?? base.waveDuration;
@@ -230,11 +252,19 @@ function normalizeConfiguration(
   if (!Number.isFinite(waveDuration) || waveDuration < 100 || waveDuration > 2000) {
     throw new TypeError("DYNT Kinetic waveDuration must be between 100 and 2000 milliseconds.");
   }
+  if (!Number.isInteger(maxActive) || maxActive < 1 || maxActive > 1000) {
+    throw new TypeError("DYNT Kinetic maxActive must be an integer between 1 and 1000.");
+  }
+  if (!Number.isInteger(maxSurfaces) || maxSurfaces < 1 || maxSurfaces > 10000) {
+    throw new TypeError("DYNT Kinetic maxSurfaces must be an integer between 1 and 10000.");
+  }
 
   return Object.freeze({
     content,
     drift,
     driftAmount,
+    maxActive,
+    maxSurfaces,
     maxTilt,
     pressure,
     response,
@@ -441,6 +471,7 @@ export function createKinetic({
   exclude,
   observe = false,
   effects,
+  limits,
   motion,
 }: KineticOptions): KineticController {
   if (!isKineticRoot(root)) {
@@ -458,7 +489,7 @@ export function createKinetic({
     : DEFAULT_EXCLUDE_SELECTOR;
   validateSelector(root, selector, "target");
   validateSelector(root, excludeSelector, "exclude");
-  const configuration = normalizeConfiguration(effects, motion);
+  const configuration = normalizeConfiguration(effects, motion, limits);
   const elements = new Set<HTMLElement>();
   const owner: KineticOwner = { configuration, root };
   const document = root.nodeType === 9 ? root as Document : root.ownerDocument;
@@ -574,6 +605,10 @@ export function createKinetic({
       return;
     }
 
+    if (!activeStates.has(ownership) && activeStates.size >= owner.configuration.maxActive) {
+      const oldest = activeStates.values().next().value as ElementOwnership | undefined;
+      if (oldest) rest(oldest, true);
+    }
     activeStates.add(ownership);
     if (frame === undefined) frame = view.requestAnimationFrame(animate);
   }
@@ -800,7 +835,8 @@ export function createKinetic({
 
     try {
       let enhancedCount = 0;
-      const targets = findTargets(root, selector, excludeSelector);
+      const targets = findTargets(root, selector, excludeSelector)
+        .slice(0, owner.configuration.maxSurfaces);
       const targetSet = new Set(targets);
 
       for (const element of elements) {
@@ -847,7 +883,7 @@ export function createKinetic({
       throw new TypeError("DYNT Kinetic update options must be an object.");
     }
     for (const name of Object.keys(options)) {
-      if (name !== "effects" && name !== "motion") {
+      if (name !== "effects" && name !== "limits" && name !== "motion") {
         throw new TypeError(`DYNT Kinetic received an unknown update option: ${name}.`);
       }
     }
@@ -855,9 +891,11 @@ export function createKinetic({
     owner.configuration = normalizeConfiguration(
       options.effects,
       options.motion,
+      options.limits,
       owner.configuration,
     );
     stopMotion();
+    refresh();
   }
 
   refresh();
