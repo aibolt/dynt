@@ -7,8 +7,8 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 - [x] Create a clean repository.
 - [x] Define independent Formation and Kinetic package boundaries.
 - [x] Define framework-independent DOM enhancement as the base integration model.
-- [ ] Confirm the public license.
-- [ ] Establish build, test, and release automation.
+- [x] Adopt the MIT public license.
+- [x] Establish build, test, package, browser, and release automation.
 
 ## Phase 1 — Formation minimum viable engine
 
@@ -29,14 +29,14 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 
 - [x] Add the profile registry and lifecycle contract.
 - [x] Add layered controller, selector-group, and local configuration overrides.
-- [ ] Add responsive measurement and reduced-motion behavior.
+- [x] Add responsive geometry and reduced-motion behavior.
 - [x] Add an additional formation after Line Push passes its contract tests.
 
 ## Phase 2.5 — Formation hardening
 
-- [ ] Add browser coverage for Chromium, Firefox, and WebKit.
-- [ ] Add lifecycle visual regression checkpoints.
-- [ ] Record accessibility and performance evidence.
+- [x] Add browser coverage for Chromium, Firefox, and WebKit.
+- [x] Add lifecycle visual regression checkpoints.
+- [x] Record accessibility and performance evidence.
 
 ## Phase 3 — Kinetic minimum viable engine
 
@@ -63,17 +63,23 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 - [x] Add thin, independent React adapter entry points.
 - [x] Add independent Web Component helper entry points.
 - [ ] Add adapters for other frameworks based on demand.
-- [ ] Keep all behavior inside the framework-independent engines.
+- [x] Keep all behavior inside the framework-independent engines.
 
 ## Phase 5.5 — Release engineering
 
-- [ ] Add protected continuous-integration checks.
-- [ ] Add reproducible package builds and provenance.
-- [ ] Add versioning, release notes, and rollback procedures.
+- [x] Add continuous-integration checks for code, browsers, packages, and audit.
+- [x] Add reproducible package builds and provenance-ready publishing.
+- [x] Add versioning, release notes, and rollback procedures.
 
 ## Phase 6 — Public release
 
 - [ ] Publish versioned packages.
-- [ ] Add migration, API, and integration documentation.
-- [ ] Add examples for existing HTML and supported frameworks.
-- [ ] Require reviewed pull requests for protected branches.
+- [x] Add migration, API, and integration documentation.
+- [x] Add examples for existing HTML and supported frameworks.
+- [x] Document reviewed outside-contribution and maintainer merge policies.
+
+## External release operations
+
+- [ ] Configure owner access to the `@dynt` npm organization.
+- [ ] Configure the protected GitHub `npm` environment and npm trusted publishers.
+- [ ] Publish the `v0.5.0` tag after the preview candidate is merged.

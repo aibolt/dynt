@@ -4,6 +4,10 @@ Framework-independent physical response for existing interfaces.
 
 Kinetic is independently installable and does not import or require Formation.
 
+```bash
+npm install @dynt/kinetic
+```
+
 ```ts
 import { createKinetic } from "@dynt/kinetic";
 import "@dynt/kinetic/styles.css";
@@ -64,3 +68,5 @@ The pressure field is rendered as engine-owned cells. `--dynt-cell-size` control
 Waves last from 100 to 2000 milliseconds. Drift is capped at four pixels. Standard impacts reuse the shared scheduler and reduced-motion impacts use a short static pressure cue with no animation frames.
 
 `maxSurfaces` and `maxActive` provide explicit rendering budgets. The defaults are 250 managed surfaces and 24 simultaneous reactions. See the repository performance guide for the tested DOM-operation and idle-work budgets.
+
+See the repository [API reference](https://github.com/aibolt/dynt/blob/main/docs/API.md), [accessibility contract](https://github.com/aibolt/dynt/blob/main/docs/ACCESSIBILITY.md), and [browser example](https://github.com/aibolt/dynt/tree/main/examples/kinetic-browser).

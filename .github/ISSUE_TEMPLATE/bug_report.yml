@@ -1,0 +1,61 @@
+name: Bug report
+description: Report a reproducible DYNT defect.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      options:
+        - "@dynt/formation"
+        - "@dynt/kinetic"
+        - "@dynt/react"
+        - "@dynt/web-components"
+        - Combined operation
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: 0.5.0
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the observed behavior and its impact.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include the smallest runnable code, repository, or steps that reproduce the defect.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include browser and version, framework and version, operating system, input type, and reduced-motion setting when relevant.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I removed private data and credentials from this report.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true

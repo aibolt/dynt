@@ -2,6 +2,10 @@
 
 Thin React lifecycle adapters for the framework-independent engines.
 
+```bash
+npm install @dynt/react @dynt/formation
+```
+
 Install and import only the engine entry point an application needs:
 
 ```tsx
@@ -19,3 +23,5 @@ function App() {
 `@dynt/react/kinetic` exports `useKinetic()` with the same root-ref integration shape. Formation and Kinetic are optional peer dependencies, so using one adapter entry point does not require the other engine.
 
 The hooks initialize after mount, destroy before unmount or dependency replacement, tolerate repeated development mounts, and perform no DOM work during server rendering. Memoize object and array configuration when it should remain stable across renders.
+
+Install `@dynt/kinetic` instead of Formation when only `useKinetic()` is used. See the repository [API reference](https://github.com/aibolt/dynt/blob/main/docs/API.md) for both entry points.

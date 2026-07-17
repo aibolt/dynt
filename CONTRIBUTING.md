@@ -83,6 +83,8 @@ Run these commands from the repository root:
 ```bash
 npm test
 npm run build
+npm run test:browser
+npm run test:packages
 npm audit --audit-level=high
 ```
 
@@ -112,10 +114,10 @@ Keep pull requests small enough to review carefully. Split unrelated work into s
 - Maintainers manually inspect every outside contribution.
 - Maintainer-authored internal changes may be owner-approved and merged after all required checks pass; an additional reviewer is not required.
 - Automated checks support outside-contribution review but never replace it.
-- At least one required owner approval must be recorded before merge.
+- Outside contributions require an owner approval before merge.
 - Contributors must address review comments or explain the technical reason for a different approach.
 - Maintainers may request changes, additional tests, a smaller scope, or a revised design.
-- Contributors may not approve or merge their own pull requests.
+- Outside contributors may not approve or merge their own pull requests. A maintainer may owner-approve and merge maintainer-authored work after every required automated gate passes.
 - Approval may be withdrawn when new changes materially alter the reviewed behavior.
 
 Maintainers may close a contribution that repeatedly ignores the project scope, architecture rules, review feedback, security requirements, or professional conduct standards.
@@ -145,6 +147,8 @@ Before requesting review, confirm:
 - [ ] Tests cover the changed behavior.
 - [ ] `npm test` passes.
 - [ ] `npm run build` passes.
+- [ ] `npm run test:browser` passes when browser behavior is affected.
+- [ ] `npm run test:packages` passes when package metadata, exports, or dependencies change.
 - [ ] `npm audit --audit-level=high` reports no unresolved high-severity issue.
 - [ ] Documentation and examples are accurate.
 - [ ] Accessibility and reduced-motion behavior are preserved.

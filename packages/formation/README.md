@@ -2,7 +2,11 @@
 
 Framework-independent, line-led construction and reversible formation lifecycle.
 
-The first implementation milestone is a single Line Push profile applied to existing HTML through one root-level initializer.
+```bash
+npm install @dynt/formation
+```
+
+Formation applies Line Push or Line Rise to existing HTML through one root-level initializer.
 
 ```ts
 import { createFormation } from "@dynt/formation";
@@ -65,3 +69,5 @@ Duration is expressed in milliseconds. Color and width accept non-empty CSS valu
 The Formation lifecycle contract uses explicit `unformed`, `locating`, `constructing`, `enclosed`, `revealing`, `formed`, `withdrawing`, and `deconstructing` phases. `form()` and `withdraw()` act on the full managed set or one managed element. Phase-driven CSS transitions let an opposing command reverse the active Line Push transition from its current visual position. When the operating system requests reduced motion, commands preserve the same lifecycle order and complete without waiting for transition events.
 
 `subscribe()` reports every phase change with the element, previous phase, and current phase. Formation also emits the bubbling `dynt:formation-phase` DOM event with the same detail so independent packages can coordinate without importing one another.
+
+See the repository [API reference](https://github.com/aibolt/dynt/blob/main/docs/API.md), [accessibility contract](https://github.com/aibolt/dynt/blob/main/docs/ACCESSIBILITY.md), and [browser example](https://github.com/aibolt/dynt/tree/main/examples/formation-browser).
