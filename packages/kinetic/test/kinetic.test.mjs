@@ -370,6 +370,52 @@ test("delegated pointer input writes bounded pressure and tilt then becomes idle
   controller.destroy();
 });
 
+test("tilt moves semantic content while keeping the surface decoration fixed", () => {
+  const window = new Window();
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = `
+    <main>
+      <article class="surface">
+        <h2>Heading</h2>
+        <p style="--dynt-reactor-x: 2px">Supporting content</p>
+        <button class="surface"><span>Nested action</span></button>
+      </article>
+    </main>
+  `;
+  const article = document.querySelector("article");
+  const heading = document.querySelector("h2");
+  const paragraph = document.querySelector("p");
+  const nestedButton = document.querySelector("button");
+  setRectangle(article, { width: 300, height: 180 });
+  setRectangle(nestedButton, { left: 20, top: 100, width: 120, height: 40 });
+  const controller = createKinetic({
+    root: document.querySelector("main"),
+    selector: ".surface",
+    effects: { content: true, pressure: false },
+    motion: { contentTravel: 12, response: 1 },
+  });
+
+  assert.equal(heading.classList.contains("dynt-kinetic__reactor"), true);
+  assert.equal(paragraph.classList.contains("dynt-kinetic__reactor"), true);
+  assert.equal(nestedButton.classList.contains("dynt-kinetic__reactor"), false);
+  assert.equal(nestedButton.querySelector("span").classList.contains("dynt-kinetic__reactor"), true);
+
+  dispatchPointer(window, article, "pointermove", { clientX: 300, clientY: 0 });
+  frames.runNext();
+  assert.notEqual(heading.style.getPropertyValue("--dynt-reactor-x"), "0.000px");
+  assert.notEqual(heading.style.getPropertyValue("--dynt-reactor-y"), "0.000px");
+  assert.equal(
+    article.querySelector("[data-dynt-kinetic-layer]").style.getPropertyValue("transform"),
+    "",
+  );
+
+  controller.destroy();
+  assert.equal(heading.classList.contains("dynt-kinetic__reactor"), false);
+  assert.equal(heading.style.getPropertyValue("--dynt-reactor-x"), "");
+  assert.equal(paragraph.style.getPropertyValue("--dynt-reactor-x"), "2px");
+});
+
 test("nearest nested surface owns delegated pointer input", () => {
   const window = new Window();
   const frames = installAnimationFrames(window);
@@ -627,8 +673,8 @@ test("impact produces one bounded rebound and content response channel", () => {
   assert.equal(frames.count, 1);
   frames.runNext();
   assert.equal(Number(inside.style.getPropertyValue("--dynt-pressure")) > 0, true);
-  assert.equal(inside.style.getPropertyValue("--dynt-content-x"), "1.000px");
-  assert.equal(inside.style.getPropertyValue("--dynt-content-y"), "-1.000px");
+  assert.equal(inside.style.getPropertyValue("--dynt-content-x"), "1.500px");
+  assert.equal(inside.style.getPropertyValue("--dynt-content-y"), "-1.500px");
 
   let frameCount = 0;
   while (frames.count > 0 && frameCount < 40) {

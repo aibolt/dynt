@@ -50,6 +50,7 @@ export const kineticPresets = Object.freeze({
       turbulenceScale: 4,
     }),
     motion: Object.freeze({
+      contentTravel: 10,
       drift: 1.5,
       maxTilt: 8,
       response: 0.18,
@@ -91,6 +92,7 @@ export const kineticPresets = Object.freeze({
       turbulenceScale: 4,
     }),
     motion: Object.freeze({
+      contentTravel: 8,
       maxTilt: 6,
       response: 0.2,
       waveDuration: 560,

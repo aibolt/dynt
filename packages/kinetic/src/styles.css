@@ -23,13 +23,12 @@
   overflow: visible;
   pointer-events: none;
   position: absolute;
-  transform:
-    translate3d(var(--dynt-drift-x), var(--dynt-drift-y), 0)
-    perspective(700px)
-    rotateX(var(--dynt-tilt-x))
-    rotateY(var(--dynt-tilt-y));
-  transform-origin: var(--dynt-pointer-x) var(--dynt-pointer-y);
   z-index: 0;
+}
+
+:where(.dynt-kinetic__reactor) {
+  translate: var(--dynt-reactor-x, 0px) var(--dynt-reactor-y, 0px);
+  will-change: translate;
 }
 
 :where(.dynt-kinetic__canvas) {
@@ -41,7 +40,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :where(.dynt-kinetic__layer) {
-    transform: none;
+  :where(.dynt-kinetic__reactor) {
+    translate: none;
   }
 }

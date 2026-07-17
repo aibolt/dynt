@@ -23,6 +23,7 @@ export type KineticEffects = Readonly<{
 }>;
 
 export type KineticMotion = Readonly<{
+  contentTravel?: number;
   drift?: number;
   maxTilt?: number;
   response?: number;
@@ -109,6 +110,7 @@ export type KineticController = Readonly<{
 type KineticConfiguration = Readonly<{
   cells: ResolvedCellConfiguration;
   content: boolean;
+  contentTravel: number;
   drift: boolean;
   driftAmount: number;
   field: ResolvedFieldConfiguration;
@@ -154,6 +156,12 @@ type ElementSnapshot = Readonly<{
   motionStyles: Readonly<Record<MotionProperty, StylePropertySnapshot>>;
 }>;
 
+type ReactorSnapshot = Readonly<{
+  hadClass: boolean;
+  x: StylePropertySnapshot;
+  y: StylePropertySnapshot;
+}>;
+
 type MotionValues = {
   pressure: number;
   x: number;
@@ -186,6 +194,7 @@ type ElementOwnership = {
   element: HTMLElement;
   layer: HTMLElement | null;
   owners: Set<KineticOwner>;
+  reactors: Map<HTMLElement, ReactorSnapshot>;
   snapshot: ElementSnapshot;
   state: MotionState;
 };
@@ -196,6 +205,34 @@ const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 const KINETIC_ATTRIBUTE = "data-dynt-kinetic";
 const CANVAS_ATTRIBUTE = "data-dynt-kinetic-canvas";
 const LAYER_ATTRIBUTE = "data-dynt-kinetic-layer";
+const REACTOR_CLASS = "dynt-kinetic__reactor";
+const REACTOR_SELECTOR = [
+  "[data-dynt-reactor]",
+  "a",
+  "button",
+  "dd",
+  "dt",
+  "figure",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "img",
+  "input",
+  "label",
+  "li",
+  "p",
+  "select",
+  "small",
+  "span",
+  "strong",
+  "svg",
+  "textarea",
+].join(",");
+const REACTOR_X_PROPERTY = "--dynt-reactor-x";
+const REACTOR_Y_PROPERTY = "--dynt-reactor-y";
 const FORMATION_PHASE_ATTRIBUTE = "data-dynt-formation-phase";
 const FORMATION_PHASE_EVENT = "dynt:formation-phase";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -209,6 +246,7 @@ const DEFAULT_CONFIGURATION: KineticConfiguration = Object.freeze({
     sizes: Object.freeze([40, 32, 24]) as readonly [number, number, number],
   }),
   content: false,
+  contentTravel: 6,
   drift: false,
   driftAmount: 1.5,
   field: Object.freeze({
@@ -317,6 +355,7 @@ function normalizeConfiguration(
   for (const name of Object.keys(motion ?? {})) {
     if (
       name !== "drift"
+      && name !== "contentTravel"
       && name !== "maxTilt"
       && name !== "response"
       && name !== "waveDuration"
@@ -373,6 +412,7 @@ function normalizeConfiguration(
   }
 
   const content = effects?.content ?? base.content;
+  const contentTravel = motion?.contentTravel ?? base.contentTravel;
   const drift = effects?.drift ?? base.drift;
   const pressure = effects?.pressure ?? base.pressure;
   const tilt = effects?.tilt ?? base.tilt;
@@ -423,6 +463,9 @@ function normalizeConfiguration(
   }
   if (!Number.isFinite(maxTilt) || maxTilt < 0 || maxTilt > 30) {
     throw new TypeError("DYNT Kinetic maxTilt must be between 0 and 30 degrees.");
+  }
+  if (!Number.isFinite(contentTravel) || contentTravel < 0 || contentTravel > 20) {
+    throw new TypeError("DYNT Kinetic contentTravel must be between 0 and 20 pixels.");
   }
   if (!Number.isFinite(response) || response <= 0 || response > 1) {
     throw new TypeError("DYNT Kinetic response must be greater than 0 and at most 1.");
@@ -551,6 +594,7 @@ function normalizeConfiguration(
       sizes: Object.freeze([...sizes]) as readonly [number, number, number],
     }),
     content,
+    contentTravel,
     drift,
     driftAmount,
     field: Object.freeze(fieldConfiguration),
@@ -641,6 +685,90 @@ function setMotionProperty(element: HTMLElement, property: MotionProperty, value
   }
 }
 
+function snapshotStyleProperty(element: HTMLElement, property: string): StylePropertySnapshot {
+  return Object.freeze({
+    priority: element.style.getPropertyPriority(property),
+    value: element.style.getPropertyValue(property),
+  });
+}
+
+function setStyleProperty(element: HTMLElement, property: string, value: string) {
+  if (
+    element.style.getPropertyValue(property) !== value
+    || element.style.getPropertyPriority(property)
+  ) {
+    element.style.setProperty(property, value);
+  }
+}
+
+function restoreStyleProperty(
+  element: HTMLElement,
+  property: string,
+  snapshot: StylePropertySnapshot,
+) {
+  if (snapshot.value) {
+    element.style.setProperty(property, snapshot.value, snapshot.priority);
+  } else {
+    element.style.removeProperty(property);
+  }
+}
+
+function findReactors(element: HTMLElement) {
+  const candidates = Array.from(element.querySelectorAll<HTMLElement>(REACTOR_SELECTOR))
+    .filter((candidate) => (
+      candidate.namespaceURI === HTML_NAMESPACE
+      && candidate.closest(`[${KINETIC_ATTRIBUTE}]`) === element
+      && !candidate.closest(`[${LAYER_ATTRIBUTE}], [data-dynt-ignore]`)
+    ));
+  const candidateSet = new Set(candidates);
+  const reactors = candidates.filter((candidate) => {
+    let parent = candidate.parentElement;
+    while (parent && parent !== element) {
+      if (candidateSet.has(parent)) return false;
+      parent = parent.parentElement;
+    }
+    return true;
+  });
+
+  if (reactors.length) return reactors.slice(0, 48);
+  return Array.from(element.children)
+    .filter((child): child is HTMLElement => (
+      child.namespaceURI === HTML_NAMESPACE
+      && !child.hasAttribute(LAYER_ATTRIBUTE)
+      && !child.matches("[data-dynt-ignore]")
+      && !child.matches(`[${KINETIC_ATTRIBUTE}]`)
+      && !child.querySelector(`[${KINETIC_ATTRIBUTE}]`)
+    ))
+    .slice(0, 48);
+}
+
+function restoreReactor(reactor: HTMLElement, snapshot: ReactorSnapshot) {
+  restoreStyleProperty(reactor, REACTOR_X_PROPERTY, snapshot.x);
+  restoreStyleProperty(reactor, REACTOR_Y_PROPERTY, snapshot.y);
+  if (!snapshot.hadClass) reactor.classList.remove(REACTOR_CLASS);
+}
+
+function syncReactors(ownership: ElementOwnership) {
+  const desired = ownership.activeOwner?.configuration.content
+    ? new Set(findReactors(ownership.element))
+    : new Set<HTMLElement>();
+
+  for (const [reactor, snapshot] of ownership.reactors) {
+    if (desired.has(reactor)) continue;
+    restoreReactor(reactor, snapshot);
+    ownership.reactors.delete(reactor);
+  }
+  for (const reactor of desired) {
+    if (ownership.reactors.has(reactor)) continue;
+    ownership.reactors.set(reactor, Object.freeze({
+      hadClass: reactor.classList.contains(REACTOR_CLASS),
+      x: snapshotStyleProperty(reactor, REACTOR_X_PROPERTY),
+      y: snapshotStyleProperty(reactor, REACTOR_Y_PROPERTY),
+    }));
+    reactor.classList.add(REACTOR_CLASS);
+  }
+}
+
 function writeMotionState(ownership: ElementOwnership) {
   const { element, state } = ownership;
   const configuration = ownership.activeOwner?.configuration ?? DEFAULT_CONFIGURATION;
@@ -656,13 +784,26 @@ function writeMotionState(ownership: ElementOwnership) {
   setMotionProperty(
     element,
     "content-x",
-    `${(configuration.content ? state.current.x * 4 : 0).toFixed(3)}px`,
+    `${(configuration.content ? state.current.x * configuration.contentTravel : 0).toFixed(3)}px`,
   );
   setMotionProperty(
     element,
     "content-y",
-    `${(configuration.content ? state.current.y * 4 : 0).toFixed(3)}px`,
+    `${(configuration.content ? state.current.y * configuration.contentTravel : 0).toFixed(3)}px`,
   );
+  let reactorIndex = 0;
+  for (const reactor of ownership.reactors.keys()) {
+    const depth = 0.72 + (reactorIndex % 4) * 0.12;
+    const reactorX = configuration.content
+      ? (state.current.x * configuration.contentTravel + state.driftX) * depth
+      : 0;
+    const reactorY = configuration.content
+      ? (state.current.y * configuration.contentTravel + state.driftY) * depth
+      : 0;
+    setStyleProperty(reactor, REACTOR_X_PROPERTY, `${reactorX.toFixed(3)}px`);
+    setStyleProperty(reactor, REACTOR_Y_PROPERTY, `${reactorY.toFixed(3)}px`);
+    reactorIndex += 1;
+  }
   setMotionProperty(element, "wave-x", `${((state.waveX + 1) * 50).toFixed(2)}%`);
   setMotionProperty(element, "wave-y", `${((state.waveY + 1) * 50).toFixed(2)}%`);
   setMotionProperty(element, "wave-scale", (0.25 + state.waveProgress * 3).toFixed(4));
@@ -1165,6 +1306,7 @@ export function createKinetic({
       element,
       layer: null,
       owners: new Set([owner]),
+      reactors: new Map(),
       snapshot: {
         hadBaseClass: element.classList.contains(BASE_CLASS),
         kineticAttribute: element.getAttribute(KINETIC_ATTRIBUTE),
@@ -1179,11 +1321,14 @@ export function createKinetic({
     const decoration = createLayer(element);
     ownership.canvas = decoration.canvas;
     ownership.layer = decoration.layer;
+    syncReactors(ownership);
     writeMotionState(ownership);
     return true;
   }
 
   function restore(element: HTMLElement, ownership: ElementOwnership) {
+    for (const [reactor, snapshot] of ownership.reactors) restoreReactor(reactor, snapshot);
+    ownership.reactors.clear();
     ownership.layer?.remove();
     restoreMotionStyles(element, ownership.snapshot);
     if (!ownership.snapshot.hadBaseClass) element.classList.remove(BASE_CLASS);
@@ -1233,6 +1378,13 @@ export function createKinetic({
       }
       for (const element of targets) {
         if (enhance(element)) enhancedCount += 1;
+      }
+      for (const element of targets) {
+        const ownership = ELEMENT_OWNERSHIP.get(element);
+        if (ownership?.activeOwner === owner) {
+          syncReactors(ownership);
+          writeMotionState(ownership);
+        }
       }
 
       return enhancedCount;
