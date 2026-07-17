@@ -19,6 +19,7 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 - [x] Reconcile and restore elements that leave the managed target set.
 - [x] Keep repeated and nested controller ownership idempotent.
 - [x] Return a controller with refresh and destroy operations.
+- [x] Define deterministic Formation lifecycle phases and transitions.
 - [ ] Preserve original element semantics and focus behavior.
 - [ ] Verify construction and reverse deconstruction.
 
