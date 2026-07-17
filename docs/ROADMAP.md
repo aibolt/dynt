@@ -14,7 +14,7 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 
 - [x] Implement the first `@dynt/formation` Line Push slice.
 - [x] Enhance existing elements through root and selector configuration.
-- [ ] Support existing and dynamically inserted elements.
+- [x] Support existing and dynamically inserted elements.
 - [x] Return a controller with refresh and destroy operations.
 - [ ] Preserve original element semantics and focus behavior.
 - [ ] Verify construction and reverse deconstruction.
