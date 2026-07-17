@@ -21,4 +21,4 @@ DYNT is in foundation development and is being built incrementally around a stab
 4. Build the independent Kinetic engine.
 5. Add React and other framework adapters without coupling the engines to a framework.
 
-See [the architecture](docs/ARCHITECTURE.md) and [the roadmap](docs/ROADMAP.md).
+See [the architecture](docs/ARCHITECTURE.md), [the implementation plan](docs/IMPLEMENTATION_PLAN.md), and [the roadmap](docs/ROADMAP.md).
