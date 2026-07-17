@@ -21,6 +21,7 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 - [x] Return a controller with refresh and destroy operations.
 - [x] Define deterministic Formation lifecycle phases and transitions.
 - [x] Expose reversible Line Push form and withdraw commands.
+- [x] Respect reduced-motion preferences in lifecycle commands.
 - [ ] Preserve original element semantics and focus behavior.
 - [ ] Verify construction and reverse deconstruction.
 

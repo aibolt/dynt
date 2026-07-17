@@ -44,6 +44,7 @@ type ElementOwnership = {
 const BASE_CLASS = "dynt-formation";
 const DEFAULT_EXCLUDE_SELECTOR = "[data-dynt-ignore]";
 const PHASE_ATTRIBUTE = "data-dynt-formation-phase";
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const PROFILE_CLASSES: Record<FormationProfile, string> = {
   "line-push": "dynt-formation--line-push",
 };
@@ -64,10 +65,30 @@ function cancelInitialForm(ownership: ElementOwnership) {
   cancel?.();
 }
 
+function prefersReducedMotion(view: Window | null | undefined) {
+  return view?.matchMedia?.(REDUCED_MOTION_QUERY).matches ?? false;
+}
+
+function advanceToTerminal(
+  element: HTMLElement,
+  ownership: ElementOwnership,
+  command: FormationCommand,
+  terminalPhase: FormationPhase,
+) {
+  while (ownership.phase !== terminalPhase) {
+    setFormationPhase(
+      element,
+      ownership,
+      nextFormationPhase(ownership.phase, command),
+    );
+  }
+}
+
 function runFormationCommand(
   element: HTMLElement,
   ownership: ElementOwnership,
   command: FormationCommand,
+  reducedMotion = false,
 ) {
   cancelInitialForm(ownership);
   const { phase } = ownership;
@@ -80,6 +101,9 @@ function runFormationCommand(
       || phase === "revealing"
       || phase === "formed"
     ) {
+      if (reducedMotion && phase !== "formed") {
+        advanceToTerminal(element, ownership, command, "formed");
+      }
       return;
     }
 
@@ -94,10 +118,21 @@ function runFormationCommand(
       setFormationPhase(element, ownership, nextPhase);
     }
 
+    if (reducedMotion && ownership.phase !== "formed") {
+      advanceToTerminal(element, ownership, command, "formed");
+    }
+
     return;
   }
 
-  if (phase === "unformed" || phase === "withdrawing" || phase === "deconstructing") {
+  if (phase === "unformed") {
+    return;
+  }
+
+  if (phase === "withdrawing" || phase === "deconstructing") {
+    if (reducedMotion) {
+      advanceToTerminal(element, ownership, command, "unformed");
+    }
     return;
   }
 
@@ -107,6 +142,10 @@ function runFormationCommand(
   if (nextPhase === "withdrawing") {
     nextPhase = nextFormationPhase(nextPhase, command);
     setFormationPhase(element, ownership, nextPhase);
+  }
+
+  if (reducedMotion && ownership.phase !== "unformed") {
+    advanceToTerminal(element, ownership, command, "unformed");
   }
 }
 
@@ -120,7 +159,7 @@ function scheduleInitialForm(
   const start = () => {
     ownership.cancelInitialForm = undefined;
     if (cancelled || ELEMENT_OWNERSHIP.get(element) !== ownership) return;
-    runFormationCommand(element, ownership, "form");
+    runFormationCommand(element, ownership, "form", prefersReducedMotion(view));
   };
 
   if (view?.requestAnimationFrame) {
@@ -283,7 +322,9 @@ export function createFormation({
 
     for (const element of commandTargets(target)) {
       const ownership = ELEMENT_OWNERSHIP.get(element);
-      if (ownership) runFormationCommand(element, ownership, command);
+      if (ownership) {
+        runFormationCommand(element, ownership, command, prefersReducedMotion(view));
+      }
     }
   }
 
@@ -304,12 +345,7 @@ export function createFormation({
     if (!ownership) return;
 
     if (ownership.phase === "constructing" && transition.pseudoElement === "::after") {
-      let nextPhase = nextFormationPhase(ownership.phase, "form");
-      while (true) {
-        setFormationPhase(element, ownership, nextPhase);
-        if (nextPhase === "formed") break;
-        nextPhase = nextFormationPhase(nextPhase, "form");
-      }
+      advanceToTerminal(element, ownership, "form", "formed");
     } else if (
       ownership.phase === "deconstructing"
       && transition.pseudoElement === "::before"

@@ -223,6 +223,24 @@ test("lifecycle commands target one element or the full managed set", () => {
   );
 });
 
+test("reduced motion completes lifecycle commands without transition events", () => {
+  const window = new Window();
+  window.matchMedia = () => ({ matches: true });
+  const document = window.document;
+  document.body.innerHTML = "<main><button>Button</button></main>";
+  const button = document.querySelector("button");
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "button",
+  });
+
+  controller.form(button);
+  assert.equal(button.dataset.dyntFormationPhase, "formed");
+
+  controller.withdraw(button);
+  assert.equal(button.dataset.dyntFormationPhase, "unformed");
+});
+
 test("observe enhances synchronous insertions in one batched refresh", async () => {
   const window = new Window();
   const document = window.document;
