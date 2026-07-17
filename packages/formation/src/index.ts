@@ -266,7 +266,10 @@ function scheduleInitialForm(
   };
 
   if (view?.requestAnimationFrame) {
-    frame = view.requestAnimationFrame(start);
+    frame = view.requestAnimationFrame(() => {
+      if (cancelled || ELEMENT_OWNERSHIP.get(element) !== ownership) return;
+      frame = view.requestAnimationFrame(start);
+    });
   } else {
     queueMicrotask(start);
   }
