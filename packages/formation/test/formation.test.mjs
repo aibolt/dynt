@@ -11,10 +11,24 @@ function flushMutations(window) {
 function dispatchTransformTransition(window, element, pseudoElement) {
   const event = new window.Event("transitionend", { bubbles: true });
   Object.defineProperties(event, {
-    propertyName: { value: "transform" },
+    propertyName: { value: "clip-path" },
     pseudoElement: { value: pseudoElement },
   });
   element.dispatchEvent(event);
+}
+
+function setRectangle(element, { left, top, width, height }) {
+  element.getBoundingClientRect = () => ({
+    bottom: top + height,
+    height,
+    left,
+    right: left + width,
+    top,
+    width,
+    x: left,
+    y: top,
+    toJSON() {},
+  });
 }
 
 test("enhances only matching elements inside the supplied root", () => {
@@ -75,6 +89,94 @@ test("preserves target identity and application event behavior", () => {
   assert.equal(clicks, 2);
 });
 
+test("viewport flow travels from the window and stages targets in order", async () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><button id='first'>First</button><button id='second'>Second</button></main>";
+  const first = document.querySelector("#first");
+  const second = document.querySelector("#second");
+  setRectangle(first, { left: 120, top: 80, width: 240, height: 60 });
+  setRectangle(second, { left: 420, top: 220, width: 180, height: 70 });
+
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "button",
+    viewportFlow: {
+      duration: 120,
+      lineLength: 240,
+      overrun: 36,
+      stagger: 80,
+    },
+  });
+
+  const layer = document.querySelector("[data-dynt-formation-flow-layer]");
+  assert.equal(layer.getAttribute("aria-hidden"), "true");
+  assert.equal(layer.querySelectorAll("[data-dynt-formation-flow]").length, 1);
+  assert.equal(layer.querySelectorAll(".dynt-formation-flow-line").length, 4);
+  assert.equal(first.childElementCount, 0);
+  assert.equal(first.dataset.dyntFormationPhase, "unformed");
+  assert.equal(second.dataset.dyntFormationPhase, "unformed");
+
+  await new Promise((resolve) => window.setTimeout(resolve, 60));
+  assert.equal(first.dataset.dyntFormationPhase, "constructing");
+  assert.equal(second.dataset.dyntFormationPhase, "unformed");
+
+  await new Promise((resolve) => window.setTimeout(resolve, 80));
+  assert.equal(second.dataset.dyntFormationPhase, "constructing");
+  assert.equal(layer.querySelector("[data-dynt-flow-target='second']") !== null, true);
+
+  dispatchTransformTransition(window, first, "::after");
+  dispatchTransformTransition(window, second, "::after");
+  assert.equal(first.dataset.dyntFormationPhase, "formed");
+  assert.equal(second.dataset.dyntFormationPhase, "formed");
+
+  controller.destroy();
+  assert.equal(document.querySelector("[data-dynt-formation-flow-layer]"), null);
+});
+
+test("viewport flow withdraws targets in reverse order with reversed flights", async () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><button id='first'>First</button><button id='second'>Second</button></main>";
+  const first = document.querySelector("#first");
+  const second = document.querySelector("#second");
+  setRectangle(first, { left: 120, top: 80, width: 240, height: 60 });
+  setRectangle(second, { left: 420, top: 220, width: 180, height: 70 });
+
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "button",
+    viewportFlow: { duration: 120, stagger: 80 },
+  });
+  await new Promise((resolve) => window.setTimeout(resolve, 60));
+  dispatchTransformTransition(window, first, "::after");
+  await new Promise((resolve) => window.setTimeout(resolve, 80));
+  dispatchTransformTransition(window, second, "::after");
+
+  controller.withdraw();
+
+  const layer = document.querySelector("[data-dynt-formation-flow-layer]");
+  assert.equal(
+    layer.querySelector("[data-dynt-flow-target='second']").dataset.dyntFlowDirection,
+    "withdraw",
+  );
+  assert.equal(layer.querySelector("[data-dynt-flow-target='first']"), null);
+  assert.equal(second.dataset.dyntFormationPhase, "formed");
+
+  await new Promise((resolve) => window.setTimeout(resolve, 60));
+  assert.equal(second.dataset.dyntFormationPhase, "deconstructing");
+  assert.equal(first.dataset.dyntFormationPhase, "formed");
+
+  await new Promise((resolve) => window.setTimeout(resolve, 80));
+  assert.equal(first.dataset.dyntFormationPhase, "deconstructing");
+  assert.equal(
+    layer.querySelector("[data-dynt-flow-target='first']").dataset.dyntFlowDirection,
+    "withdraw",
+  );
+
+  controller.destroy();
+});
+
 test("applies root tokens and restores application inline styles exactly", () => {
   const window = new Window();
   const document = window.document;
@@ -86,21 +188,65 @@ test("applies root tokens and restores application inline styles exactly", () =>
     selector: "button",
     tokens: {
       duration: 180,
+      easing: "linear",
+      fillColor: "rgb(2 12 18 / 0.8)",
       lineColor: "cyan",
+      lineStyle: "dashed",
       lineWidth: "2px",
+      overflow: 14,
     },
   });
 
   assert.equal(button.style.getPropertyValue("--dynt-formation-duration"), "180ms");
+  assert.equal(button.style.getPropertyValue("--dynt-formation-easing"), "linear");
+  assert.equal(button.style.getPropertyValue("--dynt-formation-fill-color"), "rgb(2 12 18 / 0.8)");
   assert.equal(button.style.getPropertyValue("--dynt-line-color"), "cyan");
   assert.equal(button.style.getPropertyPriority("--dynt-line-color"), "");
+  assert.equal(button.style.getPropertyValue("--dynt-line-style"), "dashed");
   assert.equal(button.style.getPropertyValue("--dynt-line-width"), "2px");
+  assert.equal(button.style.getPropertyValue("--dynt-formation-overflow"), "14px");
 
   controller.destroy();
   assert.equal(button.style.getPropertyValue("--dynt-formation-duration"), "");
+  assert.equal(button.style.getPropertyValue("--dynt-formation-easing"), "");
+  assert.equal(button.style.getPropertyValue("--dynt-formation-fill-color"), "");
   assert.equal(button.style.getPropertyValue("--dynt-line-color"), "orange");
   assert.equal(button.style.getPropertyPriority("--dynt-line-color"), "important");
+  assert.equal(button.style.getPropertyValue("--dynt-line-style"), "");
   assert.equal(button.style.getPropertyValue("--dynt-line-width"), "");
+  assert.equal(button.style.getPropertyValue("--dynt-formation-overflow"), "");
+});
+
+test("local Line Forge tokens override controller values", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = `
+    <main>
+      <article
+        data-dynt-formation-easing="ease-in-out"
+        data-dynt-fill-color="navy"
+        data-dynt-line-style="dotted"
+        data-dynt-formation-overflow="22"
+      >Article</article>
+    </main>
+  `;
+  const article = document.querySelector("article");
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "article",
+    tokens: {
+      easing: "linear",
+      fillColor: "black",
+      lineStyle: "solid",
+      overflow: 4,
+    },
+  });
+
+  assert.equal(article.style.getPropertyValue("--dynt-formation-easing"), "ease-in-out");
+  assert.equal(article.style.getPropertyValue("--dynt-formation-fill-color"), "navy");
+  assert.equal(article.style.getPropertyValue("--dynt-line-style"), "dotted");
+  assert.equal(article.style.getPropertyValue("--dynt-formation-overflow"), "22px");
+  controller.destroy();
 });
 
 test("layers root, selector-group, and local tokens in order", () => {
@@ -719,6 +865,14 @@ test("rejects invalid token and selector-group configuration before mutation", (
       groups: [{ selector: "[", tokens: {} }],
     }),
     /invalid group 1 selector/,
+  );
+  assert.throws(
+    () => createFormation({
+      root: main,
+      selector: "button",
+      viewportFlow: { duration: 20 },
+    }),
+    /viewportFlow duration must be between 120 and 4000/,
   );
   button.setAttribute("data-dynt-formation-duration", "");
   assert.throws(

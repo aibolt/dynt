@@ -11,9 +11,15 @@ import {
 function dispatchTransformTransition(window, element, pseudoElement) {
   const event = new window.Event("transitionend", { bubbles: true });
   Object.defineProperties(event, {
-    propertyName: { value: "transform" },
+    propertyName: { value: "clip-path" },
     pseudoElement: { value: pseudoElement },
   });
+  element.dispatchEvent(event);
+}
+
+function dispatchStrokeTransition(window, element) {
+  const event = new window.Event("transitionend", { bubbles: true });
+  Object.defineProperty(event, "propertyName", { value: "stroke-dashoffset" });
   element.dispatchEvent(event);
 }
 
@@ -45,15 +51,95 @@ function customProfile(name = "custom-lines") {
 }
 
 test("default registry exposes independently described profiles", () => {
-  assert.deepEqual(defaultFormationProfiles.names, ["line-push", "line-rise"]);
+  assert.deepEqual(defaultFormationProfiles.names, ["line-push", "arc-trace", "line-rise"]);
+  assert.equal(
+    defaultFormationProfiles.get("line-push").geometry.type,
+    "line-forge",
+  );
   assert.equal(
     defaultFormationProfiles.get("line-push").geometry.edgeOrder,
     "horizontal-vertical",
+  );
+  assert.deepEqual(
+    defaultFormationProfiles.get("line-push").tokens,
+    [
+      "duration",
+      "easing",
+      "fill-color",
+      "line-color",
+      "line-style",
+      "line-width",
+      "overflow",
+    ],
   );
   assert.equal(
     defaultFormationProfiles.get("line-rise").geometry.edgeOrder,
     "vertical-horizontal",
   );
+  assert.equal(defaultFormationProfiles.get("arc-trace").geometry.type, "perimeter");
+  assert.equal(defaultFormationProfiles.get("arc-trace").rendering, "svg-perimeter");
+  assert.equal(defaultFormationProfiles.get("arc-trace").capabilities.viewportFlow, false);
+});
+
+test("Arc Trace draws and withdraws one owned perimeter with opposite registers", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><article>Article</article></main>";
+  const article = document.querySelector("article");
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "article",
+    profile: "arc-trace",
+    tokens: { duration: 620, radius: "18px", lineStyle: "dashed" },
+  });
+  const layer = article.querySelector("[data-dynt-formation-perimeter]");
+  const trace = layer.querySelector(".dynt-formation__perimeter-trace");
+
+  assert.equal(layer.getAttribute("aria-hidden"), "true");
+  assert.equal(trace.getAttribute("pathLength"), "100");
+  assert.equal(layer.querySelectorAll(".dynt-formation__register").length, 2);
+  assert.equal(article.style.getPropertyValue("--dynt-formation-radius"), "18px");
+
+  controller.form(article);
+  assert.equal(article.dataset.dyntFormationPhase, "constructing");
+  dispatchStrokeTransition(window, trace);
+  assert.equal(article.dataset.dyntFormationPhase, "formed");
+
+  controller.withdraw(article);
+  assert.equal(article.dataset.dyntFormationPhase, "deconstructing");
+  dispatchStrokeTransition(window, trace);
+  assert.equal(article.dataset.dyntFormationPhase, "unformed");
+
+  controller.destroy();
+  assert.equal(article.querySelector("[data-dynt-formation-perimeter]"), null);
+  assert.equal(article.style.getPropertyValue("--dynt-formation-radius"), "");
+});
+
+test("Arc Trace rejects viewport flow and Line Forge overflow", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><article>Article</article></main>";
+  const article = document.querySelector("article");
+
+  assert.throws(
+    () => createFormation({
+      root: document.querySelector("main"),
+      selector: "article",
+      profile: "arc-trace",
+      viewportFlow: true,
+    }),
+    /arc-trace does not support viewportFlow/,
+  );
+  assert.throws(
+    () => createFormation({
+      root: document.querySelector("main"),
+      selector: "article",
+      profile: "arc-trace",
+      tokens: { overflow: 14 },
+    }),
+    /does not support the overflow token/,
+  );
+  assert.equal(article.dataset.dyntFormation, undefined);
 });
 
 test("Line Rise uses the shared reversible lifecycle contract", () => {

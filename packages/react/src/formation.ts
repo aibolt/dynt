@@ -21,6 +21,7 @@ export function useFormation<ProfileName extends string = FormationProfile>({
   observe,
   groups,
   tokens,
+  viewportFlow,
 }: UseFormationOptions<ProfileName>): RefObject<FormationController<ProfileName> | null> {
   const controllerRef = useRef<FormationController<ProfileName> | null>(null);
 
@@ -37,6 +38,7 @@ export function useFormation<ProfileName extends string = FormationProfile>({
       observe,
       groups,
       tokens,
+      viewportFlow,
     });
     controllerRef.current = controller;
 
@@ -44,7 +46,7 @@ export function useFormation<ProfileName extends string = FormationProfile>({
       controller.destroy();
       if (controllerRef.current === controller) controllerRef.current = null;
     };
-  }, [exclude, groups, observe, profile, profiles, rootRef, selector, tokens]);
+  }, [exclude, groups, observe, profile, profiles, rootRef, selector, tokens, viewportFlow]);
 
   return controllerRef;
 }

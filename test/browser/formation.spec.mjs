@@ -1,5 +1,59 @@
 import { expect, test } from "@playwright/test";
 
+test("Formation viewport flow travels from the window and stages targets", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__dyntConstructingOrder = [];
+    const orderedTargetIds = new Set(["section-target", "link-target", "button-target"]);
+    document.addEventListener("dynt:formation-phase", (event) => {
+      if (
+        event.detail?.phase === "constructing"
+        && orderedTargetIds.has(event.target.id)
+      ) {
+        window.__dyntConstructingOrder.push(event.target.id);
+      }
+    });
+  });
+  await page.goto("/examples/formation-browser/");
+  const layer = page.locator("[data-dynt-formation-flow-layer]");
+  const firstFlight = layer.locator("[data-dynt-flow-target='section-target']");
+  const travellingLine = firstFlight.locator(".dynt-formation-flow-line--top");
+  await expect(layer).toHaveAttribute("aria-hidden", "true");
+  await expect(firstFlight).toHaveCount(1);
+  await expect(travellingLine).toHaveCSS("animation-name", "dynt-flow-from-left");
+  expect(await travellingLine.evaluate((element) => (
+    element.getAnimations()[0]?.effect?.getComputedTiming().duration
+  ))).toBe(820);
+
+  await expect.poll(
+    () => page.locator("#section-target").getAttribute("data-dynt-formation-phase"),
+  ).not.toBe("unformed");
+  await expect(page.locator("#section-target")).toHaveAttribute(
+    "data-dynt-formation-phase",
+    "formed",
+  );
+  await expect.poll(
+    () => page.evaluate(() => window.__dyntConstructingOrder.length),
+  ).toBeGreaterThanOrEqual(3);
+  expect(await page.evaluate(() => window.__dyntConstructingOrder.slice(0, 3))).toEqual([
+    "section-target",
+    "link-target",
+    "button-target",
+  ]);
+  await expect(page.locator("[data-dynt-formation-flow]")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Withdraw all" }).click();
+  const reverseFlight = layer.locator("[data-dynt-flow-direction='withdraw']").first();
+  await expect(reverseFlight).toHaveCount(1);
+  await expect(reverseFlight.locator(".dynt-formation-flow-line").first()).toHaveCSS(
+    "animation-direction",
+    "reverse",
+  );
+  await expect(page.locator("#section-target")).toHaveAttribute(
+    "data-dynt-formation-phase",
+    "unformed",
+  );
+});
+
 test("Formation lifecycle preserves controls, focus, input, and dynamic targets", async ({ page }) => {
   const errors = [];
   page.on("console", (message) => {
@@ -10,6 +64,16 @@ test("Formation lifecycle preserves controls, focus, input, and dynamic targets"
 
   await expect(status).toContainText("section-target:formed");
   await expect(status).toContainText("line-rise-target:formed");
+  await expect(status).toContainText("arc-trace-target:formed");
+  const arcTrace = page.locator("#arc-trace-target");
+  await expect(arcTrace.locator("[data-dynt-formation-perimeter]")).toHaveAttribute(
+    "aria-hidden",
+    "true",
+  );
+  await expect(arcTrace.locator(".dynt-formation__perimeter-trace")).toHaveAttribute(
+    "pathLength",
+    "100",
+  );
   await page.getByRole("button", { name: "Withdraw all" }).click();
   await expect(status).toContainText("section-target:unformed");
   await page.getByRole("button", { name: "Form all" }).click();
@@ -18,7 +82,7 @@ test("Formation lifecycle preserves controls, focus, input, and dynamic targets"
   const input = page.getByRole("textbox", { name: "Text input" });
   await input.fill("Preserved across browsers");
   await page.getByRole("button", { name: "Add target" }).click();
-  await expect(status).toContainText("dynamic-6:formed");
+  await expect(status).toContainText("dynamic-7:formed");
   await expect(input).toHaveValue("Preserved across browsers");
   await page.getByRole("link", { name: "Focusable link" }).focus();
   await expect(page.getByRole("link", { name: "Focusable link" })).toBeFocused();
@@ -55,13 +119,16 @@ test("Formation preserves accessible controls and responsive geometry", async ({
   const narrowBox = await section.boundingBox();
   expect(narrowBox.width).toBeLessThan(wideBox.width);
   await expect(section).toHaveAttribute("data-dynt-formation-phase", "formed");
-  expect(await section.evaluate((element) => ({
+  const geometry = await section.evaluate((element) => ({
     after: getComputedStyle(element, "::after").transform,
+    afterTop: getComputedStyle(element, "::after").top,
     before: getComputedStyle(element, "::before").transform,
-  }))).toEqual({
-    after: "matrix(1, 0, 0, 1, 0, 0)",
-    before: "matrix(1, 0, 0, 1, 0, 0)",
-  });
+    beforeLeft: getComputedStyle(element, "::before").left,
+  }));
+  expect(geometry.before).toBe("none");
+  expect(geometry.after).toBe("none");
+  expect(geometry.beforeLeft).toBe("-14px");
+  expect(geometry.afterTop).toBe("-14px");
 });
 
 test("Formation lifecycle visual checkpoints", async ({ browserName, page }) => {
@@ -83,13 +150,26 @@ test("Formation lifecycle visual checkpoints", async ({ browserName, page }) => 
       }
     `,
   });
-  await expect(section).toHaveScreenshot("formation-formed.png", { animations: "disabled" });
+  const captureFormation = async (name) => {
+    const box = await section.boundingBox();
+    const image = await page.screenshot({
+      animations: "disabled",
+      clip: {
+        height: box.height + 36,
+        width: box.width + 36,
+        x: box.x - 18,
+        y: box.y - 18,
+      },
+    });
+    expect(image).toMatchSnapshot(name);
+  };
+  await captureFormation("formation-formed.png");
 
   await page.getByRole("button", { name: "Withdraw all" }).click();
   await expect(section).toHaveAttribute("data-dynt-formation-phase", "unformed");
-  await expect(section).toHaveScreenshot("formation-unformed.png", { animations: "disabled" });
+  await captureFormation("formation-unformed.png");
 
   await page.getByRole("button", { name: "Form all" }).click();
   await expect(section).toHaveAttribute("data-dynt-formation-phase", "formed");
-  await expect(section).toHaveScreenshot("formation-formed.png", { animations: "disabled" });
+  await captureFormation("formation-formed.png");
 });

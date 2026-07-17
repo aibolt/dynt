@@ -21,6 +21,7 @@
 
       .controls {
         display: flex;
+        flex-wrap: wrap;
         gap: 0.75rem;
       }
 
@@ -36,12 +37,14 @@
         background: #111827;
         border: 1px solid #273449;
         color: inherit;
-        min-height: 3rem;
+        min-height: 7rem;
         padding: 1rem;
       }
 
       .nested {
         margin-top: 1rem;
+        min-height: 4rem;
+        width: calc(100% - 2rem);
       }
 
       button,
@@ -64,24 +67,32 @@
       <button id="resume" type="button">Resume</button>
       <button id="impact" type="button">Impact parent</button>
       <button id="add-target" type="button">Add target</button>
+      <button data-shape="square" type="button">Square cells</button>
+      <button data-shape="hexagon" type="button">Hexagon cells</button>
+      <button data-shape="circle" type="button">Circle cells</button>
+      <button data-shape="diamond" type="button">Diamond cells</button>
     </div>
 
     <main id="app">
       <section id="parent-surface" class="surface">
-        Parent surface
+        <h2>Parent surface</h2>
+        <p>Parent-owned content response</p>
         <button id="nested-surface" class="surface nested" type="button">
-          Nearest nested surface
+          <span>Nearest nested surface</span>
         </button>
       </section>
 
-      <a id="link-surface" class="surface" href="#verified">Focusable link surface</a>
+      <a id="link-surface" class="surface" href="#verified"><span>Focusable link surface</span></a>
       <input id="input-surface" class="surface" aria-label="Editable input" value="Editable value">
     </main>
 
     <output id="status" aria-live="polite"></output>
 
     <script type="module">
-      import { createKinetic } from "../../packages/kinetic/dist/index.js";
+      import {
+        createKinetic,
+        kineticPresets,
+      } from "../../packages/kinetic/dist/index.js";
 
       const app = document.querySelector("#app");
       const status = document.querySelector("#status");
@@ -89,16 +100,11 @@
         root: app,
         selector: ".surface",
         observe: true,
-        effects: {
-          content: true,
-          drift: true,
-          pressure: true,
-          tilt: true,
-          wave: true,
-        },
-        motion: {
-          drift: 1,
-          waveDuration: 420,
+        ...kineticPresets.structural,
+        flow: {
+          ...kineticPresets.structural.flow,
+          multi: true,
+          maxWaves: 4,
         },
       });
       let statusTimer;
@@ -107,7 +113,10 @@
         status.textContent = kinetic.elements
           .map((element) => {
             const style = element.style;
-            return `${element.id}:${style.getPropertyValue("--dynt-pressure")}:${style.getPropertyValue("--dynt-tilt-y")}`;
+            const canvas = Array.from(element.children)
+              .find((child) => child.hasAttribute("data-dynt-kinetic-layer"))
+              ?.querySelector("canvas");
+            return `${element.id}:${style.getPropertyValue("--dynt-tilt-y")}:${canvas?.dataset.dyntCellShape ?? "none"}:${canvas?.dataset.dyntCellSize ?? "none"}:${canvas?.dataset.dyntFlowCells ?? "0"}`;
           })
           .join("\n");
       }
@@ -142,6 +151,17 @@
         article.textContent = "Dynamically observed kinetic surface";
         app.append(article);
         scheduleStatus();
+      });
+      document.querySelectorAll("[data-shape]").forEach((button) => {
+        button.addEventListener("click", () => {
+          kinetic.update({
+            cells: {
+              ...kineticPresets.structural.cells,
+              shape: button.dataset.shape,
+            },
+          });
+          renderStatus();
+        });
       });
       renderStatus();
     </script>

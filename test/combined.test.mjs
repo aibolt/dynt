@@ -53,7 +53,7 @@ function dispatchPointer(window, element) {
 function completeFormation(window, element) {
   const event = new window.Event("transitionend", { bubbles: true });
   Object.defineProperties(event, {
-    propertyName: { value: "transform" },
+    propertyName: { value: "clip-path" },
     pseudoElement: { value: "::after" },
   });
   element.dispatchEvent(event);
@@ -96,11 +96,15 @@ test("combined mode coordinates through DOM state in either initialization order
     dispatchPointer(window, button);
     assert.equal(frames.count, 1);
     frames.runNext();
-    assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "8.000deg");
+    assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "1.350deg");
+    assert.equal(
+      Number.parseFloat(button.style.getPropertyValue("--dynt-tl-overflow"))
+        > Number.parseFloat(button.style.getPropertyValue("--dynt-tr-overflow")),
+      true,
+    );
 
     formation.withdraw(button);
     assert.equal(frames.count, 0);
-    assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.0000");
     assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
 
     kinetic.destroy();
@@ -135,6 +139,6 @@ test("destroying either engine leaves the other engine intact", () => {
     assert.equal(button.hasAttribute("data-dynt-formation"), false);
     assert.equal(button.hasAttribute("data-dynt-kinetic"), false);
     assert.equal(button.querySelectorAll("[data-dynt-kinetic-layer]").length, 0);
-    assert.equal(button.style.getPropertyValue("--dynt-pressure"), "");
+    assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "");
   }
 });

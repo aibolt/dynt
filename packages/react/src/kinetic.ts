@@ -13,9 +13,11 @@ export type UseKineticOptions = Omit<KineticOptions, "root"> & Readonly<{
 export function useKinetic({
   rootRef,
   selector,
+  cells,
   exclude,
   observe,
   effects,
+  flow,
   limits,
   motion,
 }: UseKineticOptions): RefObject<KineticController | null> {
@@ -28,9 +30,11 @@ export function useKinetic({
     const controller = createKinetic({
       root,
       selector,
+      cells,
       exclude,
       observe,
       effects,
+      flow,
       limits,
       motion,
     });
@@ -40,7 +44,7 @@ export function useKinetic({
       controller.destroy();
       if (controllerRef.current === controller) controllerRef.current = null;
     };
-  }, [effects, exclude, limits, motion, observe, rootRef, selector]);
+  }, [cells, effects, exclude, flow, limits, motion, observe, rootRef, selector]);
 
   return controllerRef;
 }

@@ -8,7 +8,7 @@ Formation owns `data-dynt-formation-phase` and emits the bubbling `dynt:formatio
 
 Kinetic immediately returns an owned surface to rest during locating, construction, reveal, withdrawal, or deconstruction. When the surface reaches `formed`, normal pointer input resumes. This rule applies regardless of initialization order.
 
-Formation geometry stays on host pseudo-elements at layer 1. Kinetic renders inside its accessibility-hidden child layer at layer 0 and applies transforms only to that layer. Kinetic therefore does not separate Formation lines from their owning host surface or replace application transforms.
+Formation's transient viewport-flow overlay crosses the window without entering application targets; permanent geometry stays on host pseudo-elements at layer 1. Kinetic renders inside its accessibility-hidden canvas layer at layer 0. On a shared formed surface, tilt rotates the permanent rails and cell plate as one shallow assembly, shifts its shadow, compresses the near corner overflow, and extends the far corner. Optional content and drift remain local reactor channels. The application's host transform and nested surfaces remain untouched.
 
 ## Cleanup
 
@@ -17,7 +17,7 @@ Each engine removes only its own classes, attributes, event listeners, observers
 ## Example
 
 ```ts
-const formation = createFormation({ root, selector, observe: true });
+const formation = createFormation({ root, selector, observe: true, viewportFlow: true });
 const kinetic = createKinetic({ root, selector, observe: true });
 
 formation.form();

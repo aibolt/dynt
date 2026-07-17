@@ -33,12 +33,11 @@
       }
 
       .surface {
-        --dynt-formation-duration: 160ms;
         --dynt-kinetic-color: rgb(103 232 249 / 0.38);
-        --dynt-line-color: #67e8f9;
         background: #111827;
         border: 0;
         color: inherit;
+        min-height: 6rem;
         padding: 1rem;
       }
 
@@ -65,9 +64,10 @@
 
     <main id="app">
       <section id="section-surface" class="surface">
-        Formation geometry and Kinetic field share this surface.
+        <h2>Combined surface</h2>
+        <p>The near corner presses inward while the opposite rail and content lift.</p>
       </section>
-      <button id="button-surface" class="surface" type="button">Focusable combined button</button>
+      <button id="button-surface" class="surface" type="button"><span>Focusable combined button</span></button>
       <input id="input-surface" class="surface" aria-label="Combined input" value="Editable value">
     </main>
 
@@ -75,7 +75,10 @@
 
     <script type="module">
       import { createFormation } from "../../packages/formation/dist/index.js";
-      import { createKinetic } from "../../packages/kinetic/dist/index.js";
+      import {
+        createKinetic,
+        kineticPresets,
+      } from "../../packages/kinetic/dist/index.js";
 
       const app = document.querySelector("#app");
       const status = document.querySelector("#status");
@@ -83,19 +86,34 @@
         root: app,
         selector: ".surface",
         observe: true,
+        viewportFlow: {
+          duration: 920,
+          lineLength: 680,
+          overrun: 36,
+          stagger: 140,
+        },
+        tokens: {
+          duration: 180,
+          easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+          fillColor: "rgb(8 24 32 / 0.92)",
+          lineColor: "#67e8f9",
+          lineStyle: "solid",
+          lineWidth: "1px",
+          overflow: 14,
+        },
       });
       const kinetic = createKinetic({
         root: app,
         selector: ".surface",
         observe: true,
-        effects: { pressure: true, tilt: true, wave: true },
+        ...kineticPresets.structural,
       });
       let statusTimer;
 
       function renderStatus() {
         status.textContent = formation.elements
           .map((element) => (
-            `${element.id}:${element.dataset.dyntFormationPhase}:${element.style.getPropertyValue("--dynt-pressure")}:${element.style.getPropertyValue("--dynt-tilt-y")}`
+            `${element.id}:${element.dataset.dyntFormationPhase}:${element.style.getPropertyValue("--dynt-tilt-y")}`
           ))
           .join("\n");
       }

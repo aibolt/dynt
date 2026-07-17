@@ -9,7 +9,7 @@ A developer will initialize DYNT once against an explicit application root and a
 Formation and Kinetic are separate products:
 
 - `@dynt/formation` constructs, encloses, reveals, withdraws, and deconstructs interface geometry.
-- `@dynt/kinetic` adds pointer pressure, tilt, drift, waves, impact, and content response.
+- `@dynt/kinetic` adds corner-coupled tilt, drift, circular turbulent waves, impact, and content response.
 
 Either package must work by itself. Installing or using one package must not install, initialize, or require the other.
 
@@ -55,7 +55,6 @@ const kinetic = createKinetic({
   selector: "section, article, button, [data-surface]",
   observe: true,
   effects: {
-    pressure: true,
     tilt: true,
   },
 });
@@ -223,10 +222,7 @@ Additional profiles will be accepted one at a time. Each must pass the same life
 
 ### 7.1 Minimum viable effects
 
-The first Kinetic release will implement two independent effects:
-
-- Bounded pointer pressure.
-- Bounded surface tilt.
+The first Kinetic release will implement bounded surface tilt from delegated pointer position.
 
 Both effects must work on plain HTML without Formation.
 
@@ -247,13 +243,14 @@ The engine will stop scheduling when all managed effects reach rest.
 Advanced effects will be introduced separately after the minimum engine is stable:
 
 1. Organic drift.
-2. Cursor-local pressure field.
-3. Traveling wave.
-4. Local impact and rebound.
-5. Content response.
-6. Configurable cell geometry and color sources.
+2. Circular turbulent wave.
+3. Local impact and rebound.
+4. Content response.
+5. Configurable cell geometry and color sources.
 
 Each effect must be independently enabled, locally owned, removable, reduced-motion aware, and subject to a rendering budget.
+
+The portable renderer implements click- and impact-driven circular flow on an engine-owned canvas. Coherent turbulence distorts radial distance while square, connected hexagon, circle, and interlocked diamond geometry share one scheduler and automatic three-level surface sizing. Color sources support a single color, discrete bands, or interpolated gradients. Flow configuration exposes bounded speed, thickness, recovery, intensity, turbulence, growth, size-aware terminal overflow, deterministic seeds, and optional bounded multi-wave operation.
 
 ### 7.5 Rendering budget
 
@@ -263,7 +260,7 @@ Kinetic will enforce measurable limits:
 - One scheduler per root.
 - Configurable caps on active surfaces and content reactors.
 - Bounded device-pixel ratio for canvas effects.
-- Bounded cell count for pressure and wave fields.
+- Bounded cell count for active wave fronts.
 - Older reactions on the same target replaced instead of accumulated.
 
 ## 8. Combined operation
@@ -406,7 +403,7 @@ Publishing will include:
 
 - `0.1.x` — Formation preview with Line Push and static DOM enhancement.
 - `0.2.x` — Formation lifecycle, observation, cleanup, and accessibility contract.
-- `0.3.x` — Independent Kinetic preview with pressure and tilt.
+- `0.3.x` — Independent Kinetic preview with tilt and impact.
 - `0.4.x` — Combined ownership protocol and advanced interaction work.
 - `0.5.x` — First framework adapter and browser matrix.
 - `1.0.0` — Stable APIs, complete documentation, release automation, and satisfied quality gates.
@@ -486,7 +483,7 @@ Deliverables:
 
 - Independent package build.
 - Delegated pointer input.
-- Pressure and tilt effects.
+- Corner-coupled tilt.
 - Bounded motion and idle suspension.
 - Refresh, pause, resume, and destroy.
 
@@ -496,7 +493,7 @@ Gate: Kinetic passes plain HTML tests with Formation absent.
 
 Deliverables:
 
-- Drift, local field, waves, impact, and content response introduced as separate reviewed changes.
+- Drift, circular waves, impact, and content response introduced as separate reviewed changes.
 - Rendering caps and performance benchmarks.
 - Nested ownership and effect isolation.
 
@@ -570,7 +567,7 @@ Recorded decisions:
 - Public license: MIT.
 - Package names: `@dynt/formation`, `@dynt/kinetic`, `@dynt/react`, and `@dynt/web-components`.
 - Browser policy: current evergreen Chromium, Firefox, and WebKit engines, verified through the pinned Playwright matrix.
-- Public preview performance budget: 500-target DOM operations complete within 1000 milliseconds in the test environment; Kinetic defaults to 250 managed and 24 active surfaces.
+- Public preview performance budget: 500-target Formation operations complete within 1000 milliseconds and Kinetic operations within 2000 milliseconds in the test environment; Kinetic defaults to 250 managed and 24 active surfaces.
 - Framework delivery: React and Web Components are included; additional adapters require demonstrated demand.
 - Security reporting: private GitHub security advisories.
 - Release procedure: synchronized `0.5.0` preview packages, tagged automation, clean-package verification, provenance, and immutable-version rollback.

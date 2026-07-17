@@ -1,20 +1,47 @@
-export type FormationTokenName = "duration" | "line-color" | "line-width";
+export type FormationTokenName =
+  | "duration"
+  | "easing"
+  | "fill-color"
+  | "line-color"
+  | "line-style"
+  | "line-width"
+  | "overflow"
+  | "radius";
 
 export type FormationTokens = Readonly<{
   duration?: number;
+  easing?: string;
+  fillColor?: string;
   lineColor?: string;
+  lineStyle?: "solid" | "dashed" | "dotted" | "double";
   lineWidth?: string;
+  overflow?: number;
+  radius?: string;
 }>;
 
 export type ResolvedFormationTokens = Partial<Record<FormationTokenName, string>>;
 
 export const FORMATION_TOKEN_PROPERTIES: Readonly<Record<FormationTokenName, string>> = {
   duration: "--dynt-formation-duration",
+  easing: "--dynt-formation-easing",
+  "fill-color": "--dynt-formation-fill-color",
   "line-color": "--dynt-line-color",
+  "line-style": "--dynt-line-style",
   "line-width": "--dynt-line-width",
+  overflow: "--dynt-formation-overflow",
+  radius: "--dynt-formation-radius",
 };
 
-const TOKEN_OPTION_NAMES = new Set(["duration", "lineColor", "lineWidth"]);
+const TOKEN_OPTION_NAMES = new Set([
+  "duration",
+  "easing",
+  "fillColor",
+  "lineColor",
+  "lineStyle",
+  "lineWidth",
+  "overflow",
+  "radius",
+]);
 
 export function normalizeFormationTokens(
   tokens: FormationTokens | undefined,
@@ -45,6 +72,26 @@ export function normalizeFormationTokens(
     normalized.duration = `${tokens.duration}ms`;
   }
 
+  if (tokens.easing !== undefined) {
+    if (!supported.has("easing")) {
+      throw new TypeError("DYNT Formation profile does not support the easing token.");
+    }
+    if (typeof tokens.easing !== "string" || !tokens.easing.trim()) {
+      throw new TypeError("DYNT Formation easing must be a non-empty CSS timing function.");
+    }
+    normalized.easing = tokens.easing;
+  }
+
+  if (tokens.fillColor !== undefined) {
+    if (!supported.has("fill-color")) {
+      throw new TypeError("DYNT Formation profile does not support the fillColor token.");
+    }
+    if (typeof tokens.fillColor !== "string" || !tokens.fillColor.trim()) {
+      throw new TypeError("DYNT Formation fillColor must be a non-empty string.");
+    }
+    normalized["fill-color"] = tokens.fillColor;
+  }
+
   if (tokens.lineColor !== undefined) {
     if (!supported.has("line-color")) {
       throw new TypeError("DYNT Formation profile does not support the lineColor token.");
@@ -53,6 +100,16 @@ export function normalizeFormationTokens(
       throw new TypeError("DYNT Formation lineColor must be a non-empty string.");
     }
     normalized["line-color"] = tokens.lineColor;
+  }
+
+  if (tokens.lineStyle !== undefined) {
+    if (!supported.has("line-style")) {
+      throw new TypeError("DYNT Formation profile does not support the lineStyle token.");
+    }
+    if (!["solid", "dashed", "dotted", "double"].includes(tokens.lineStyle)) {
+      throw new TypeError("DYNT Formation lineStyle must be solid, dashed, dotted, or double.");
+    }
+    normalized["line-style"] = tokens.lineStyle;
   }
 
   if (tokens.lineWidth !== undefined) {
@@ -65,6 +122,26 @@ export function normalizeFormationTokens(
     normalized["line-width"] = tokens.lineWidth;
   }
 
+  if (tokens.overflow !== undefined) {
+    if (!supported.has("overflow")) {
+      throw new TypeError("DYNT Formation profile does not support the overflow token.");
+    }
+    if (!Number.isFinite(tokens.overflow) || tokens.overflow < 0 || tokens.overflow > 64) {
+      throw new TypeError("DYNT Formation overflow must be between 0 and 64 pixels.");
+    }
+    normalized.overflow = `${tokens.overflow}px`;
+  }
+
+  if (tokens.radius !== undefined) {
+    if (!supported.has("radius")) {
+      throw new TypeError("DYNT Formation profile does not support the radius token.");
+    }
+    if (typeof tokens.radius !== "string" || !tokens.radius.trim()) {
+      throw new TypeError("DYNT Formation radius must be a non-empty string.");
+    }
+    normalized.radius = tokens.radius;
+  }
+
   return normalized;
 }
 
@@ -73,13 +150,23 @@ export function readLocalFormationTokens(
   supportedTokens: readonly FormationTokenName[],
 ): ResolvedFormationTokens {
   const duration = element.getAttribute("data-dynt-formation-duration");
+  const easing = element.getAttribute("data-dynt-formation-easing");
+  const fillColor = element.getAttribute("data-dynt-fill-color");
   const lineColor = element.getAttribute("data-dynt-line-color");
+  const lineStyle = element.getAttribute("data-dynt-line-style");
   const lineWidth = element.getAttribute("data-dynt-line-width");
+  const overflow = element.getAttribute("data-dynt-formation-overflow");
+  const radius = element.getAttribute("data-dynt-formation-radius");
 
   return normalizeFormationTokens({
     duration: duration === null ? undefined : Number(duration.trim() ? duration : Number.NaN),
+    easing: easing === null ? undefined : easing,
+    fillColor: fillColor === null ? undefined : fillColor,
     lineColor: lineColor === null ? undefined : lineColor,
+    lineStyle: lineStyle === null ? undefined : lineStyle as FormationTokens["lineStyle"],
     lineWidth: lineWidth === null ? undefined : lineWidth,
+    overflow: overflow === null ? undefined : Number(overflow.trim() ? overflow : Number.NaN),
+    radius: radius === null ? undefined : radius,
   }, supportedTokens, "local tokens");
 }
 

@@ -1,13 +1,45 @@
 # DYNT
 
+[![CI](https://github.com/aibolt/dynt/actions/workflows/ci.yml/badge.svg)](https://github.com/aibolt/dynt/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-67e8f9.svg)](LICENSE)
+![Node.js 20+](https://img.shields.io/badge/node-%3E%3D20-67e8f9.svg)
+
 DYNT adds constructed geometry and physical response to an existing interface from one application boundary. It enhances matching DOM elements without replacing them or requiring changes in every component.
 
 The two engines are independent:
 
-- `@dynt/formation` — line-led construction, enclosure, reveal, and reversible deconstruction.
-- `@dynt/kinetic` — pointer pressure, tilt, drift, waves, impact, and content response.
+- `@dynt/formation` — four-rail Line Forge and single-stroke perimeter construction with reversible deconstruction.
+- `@dynt/kinetic` — corner-coupled tilt, circular turbulent cell waves, drift, impact, and content response.
 
 Install either engine by itself, combine them through their DOM coordination contract, or use the thin React and Web Component integrations.
+
+## See DYNT in one screen
+
+![DYNT showing corner-coupled tilt, an active circular turbulent cell wave, and Arc Trace perimeter construction](docs/assets/dynt-showcase.png)
+
+This local integration lab uses ordinary semantic HTML with the packages from this repository. Pointer movement drives the bounded corner tilt, an impact launches the circular turbulent cell front, and Arc Trace owns one reversible perimeter stroke.
+
+## What the current preview includes
+
+- **Formation drama:** transient lines travel from the viewport boundaries, acquire targets in sequence, and reverse that order during withdrawal.
+- **Three formation profiles:** Line Push, Line Rise, and the continuous rounded Arc Trace perimeter.
+- **Physical response:** corner-coupled plate tilt moves the constructed frame and nearby semantic content through one restrained depth model.
+- **Circular turbulent waves:** click or controlled impact creates a radial, turbulence-distorted front with configurable speed, thickness, recovery, intensity, and cell sizing.
+- **Real cell geometry:** square, connected hexagon, circle, and interlocked diamond renderers, with a three-level size tree for nested surfaces.
+- **Framework-independent adoption:** one explicit root and selector can enhance existing and dynamically inserted elements; React and Web Component packages remain thin lifecycle adapters.
+
+## One application boundary
+
+```mermaid
+flowchart LR
+  A["Existing application DOM"] --> B["One root + selector"]
+  B --> F["@dynt/formation"]
+  B --> K["@dynt/kinetic"]
+  F --> U["Same HTML, enhanced"]
+  K --> U
+```
+
+Formation, Kinetic, or both can be initialized at a layout boundary. Individual application components do not need to import DYNT, and either engine can be removed without requiring the other.
 
 ## Status
 
@@ -39,14 +71,16 @@ const formation = createFormation({
   root: document.querySelector("#app"),
   selector: "section, article, button, [data-surface]",
   observe: true,
+  viewportFlow: true,
 });
 ```
 
 ```ts
-import { createKinetic } from "@dynt/kinetic";
+import { createKinetic, kineticPresets } from "@dynt/kinetic";
 import "@dynt/kinetic/styles.css";
 
 const kinetic = createKinetic({
+  ...kineticPresets.structural,
   root: document.querySelector("#app"),
   selector: "section, article, button, [data-surface]",
   observe: true,
@@ -59,18 +93,18 @@ The root and selector are always explicit. Matching elements added later are ado
 
 | Package | Purpose | Requires the other engine |
 | --- | --- | --- |
-| `@dynt/formation` | Line Push, Line Rise, lifecycle, profiles, and tokens | No |
-| `@dynt/kinetic` | Pressure, tilt, drift, local field, wave, impact, and content channels | No |
+| `@dynt/formation` | Viewport flow lines, Line Forge rails, Arc Trace, lifecycle, profiles, and tokens | No |
+| `@dynt/kinetic` | Cell geometry, circular turbulent waves, tilt, drift, impact, and content channels | No |
 | `@dynt/react` | Independent React hooks for either engine | No; engines are optional peers |
 | `@dynt/web-components` | Independent custom-element helpers for either engine | No; engines are optional peers |
 
 ## Quality gates
 
-- 44 Formation unit, DOM, profile, lifecycle, shadow-root, and performance checks.
-- 21 Kinetic unit, DOM, input, effects, shadow-root, and performance checks.
+- 49 Formation unit, DOM, profile, lifecycle, bidirectional viewport-flow, shadow-root, and performance checks.
+- 30 Kinetic unit, DOM, input, geometry, semantic-content, wave, shadow-root, and performance checks.
 - 6 adapter checks across React and Web Components.
 - 2 composition checks covering initialization and cleanup order.
-- 22 passing browser checks plus two intentional visual-test skips across Chromium, Firefox, and WebKit.
+- 28 passing browser checks plus two intentional visual-test skips across Chromium, Firefox, and WebKit.
 - Clean tarball installation and import verification for all four public packages.
 - High-severity dependency audit and reproducible release workflow.
 

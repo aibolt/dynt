@@ -6,7 +6,7 @@ Framework-independent, line-led construction and reversible formation lifecycle.
 npm install @dynt/formation
 ```
 
-Formation applies Line Push or Line Rise to existing HTML through one root-level initializer.
+Formation applies viewport-spanning flow lines, four-rail Line Forge construction, and single-stroke perimeter formation through one root-level initializer. Line Push, Line Rise, and Arc Trace select different geometry without changing the integration contract.
 
 ```ts
 import { createFormation } from "@dynt/formation";
@@ -18,10 +18,20 @@ const formation = createFormation({
   exclude: ".third-party-widget",
   profile: "line-push",
   observe: true,
+  viewportFlow: {
+    duration: 1160,
+    lineLength: 680,
+    overrun: 36,
+    stagger: 110,
+  },
   tokens: {
     duration: 320,
+    easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+    fillColor: "rgb(8 24 32 / 0.92)",
     lineColor: "#67e8f9",
+    lineStyle: "solid",
     lineWidth: "1px",
+    overflow: 14,
   },
   groups: [
     { selector: ".featured", tokens: { lineWidth: "2px" } },
@@ -34,7 +44,7 @@ const unsubscribe = formation.subscribe(({ element, phase }) => {
   console.log(element, phase);
 });
 formation.refresh();
-formation.update({ tokens: { duration: 200 } });
+formation.update({ tokens: { duration: 200 }, viewportFlow: true });
 unsubscribe();
 formation.destroy();
 ```
@@ -49,20 +59,31 @@ Repeated and nested controllers share one internal ownership record per element.
 
 ## Profiles
 
-Formation includes two independent, line-led profiles:
+Formation includes three independent profiles:
 
 - `line-push` constructs horizontal edges before vertical edges.
 - `line-rise` constructs vertical edges before horizontal edges.
+- `arc-trace` draws one continuous rounded perimeter, leaves paired registers on opposite edges, and erases along the same path during withdrawal.
 
-The typed `createFormationProfileRegistry()` API accepts additional profile definitions without changing the engine. A definition declares its scoped CSS class, edge geometry, supported tokens, transition completion hooks, rendering strategy, and reduced-motion and responsive capabilities. Pass the returned registry through `profiles` and select its profile by name.
+Line Push and Line Rise support optional viewport travel and corner overflow. Arc Trace owns an accessibility-hidden SVG perimeter, supports the `radius` token, and deliberately rejects viewport travel and overflow because neither belongs to its geometry.
+
+The typed `createFormationProfileRegistry()` API accepts additional profile definitions without changing the engine. A definition declares its scoped CSS class, edge or perimeter geometry, supported tokens, transition completion hooks, rendering strategy, and reduced-motion and responsive capabilities. Pass the returned registry through `profiles` and select its profile by name.
 
 Two controllers may share a target only when they use the same profile definition. Formation rejects conflicting profiles before changing that target.
 
 ## Configuration layers
 
-Formation applies configuration in this order: profile CSS defaults, controller `tokens`, matching `groups` in array order, and local data attributes. Supported local overrides are `data-dynt-formation-duration`, `data-dynt-line-color`, and `data-dynt-line-width`. `update()` replaces supplied controller or group layers and reapplies them without replacing the managed elements.
+Formation applies configuration in this order: profile CSS defaults, controller `tokens`, matching `groups` in array order, and local data attributes. Supported local overrides are `data-dynt-formation-duration`, `data-dynt-formation-easing`, `data-dynt-fill-color`, `data-dynt-line-color`, `data-dynt-line-style`, `data-dynt-line-width`, `data-dynt-formation-overflow`, and `data-dynt-formation-radius`. `update()` replaces supplied controller or group layers and reapplies them without replacing the managed elements.
 
-Duration is expressed in milliseconds. Color and width accept non-empty CSS values. Destroying a controller restores the exact inline custom-property values and priorities that existed before Formation managed the target.
+Duration and overflow are expressed in milliseconds and pixels respectively. Colors, width, and easing accept non-empty CSS values. Line style accepts `solid`, `dashed`, `dotted`, or `double`. Destroying a controller restores the exact inline custom-property values and priorities that existed before Formation managed the target.
+
+When Kinetic is also present, the four rails join its bounded plate transform. Corner overflow contracts near the pointer and expands at the far edge while the application-owned host transform remains untouched.
+
+## Viewport flow
+
+Set `viewportFlow: true` to use the default travelling-line choreography, or pass `{ duration, stagger, lineLength, overrun }`. Formation measures each target against its viewport, sends four transient lines from the window boundaries, begins the permanent rail construction as those lines strike the target, and staggers the same sequence across the managed set. `withdraw()` runs the target order and travelling lines in reverse before deconstructing each permanent frame. The effect is opt-in because it deliberately occupies the full viewport; it remains available through the plain DOM engine, React hook, and Web Component helper without component-level markup.
+
+The viewport layer is outside application targets, uses `aria-hidden` and `pointer-events: none`, and is removed by `destroy()`. Reduced motion skips the travelling lines while preserving lifecycle events and the final formed state.
 
 ## Lifecycle contract
 

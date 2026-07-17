@@ -41,7 +41,7 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 ## Phase 3 — Kinetic minimum viable engine
 
 - [x] Implement the independent `@dynt/kinetic` DOM ownership package.
-- [x] Add bounded pointer pressure and tilt.
+- [x] Add bounded corner-coupled tilt.
 - [x] Add cleanup, ownership, and reduced-motion behavior.
 - [x] Verify that Kinetic works on plain HTML without Formation.
 
@@ -54,9 +54,18 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 
 ## Phase 4.5 — Advanced Kinetic effects
 
-- [x] Add drift, local field, wave, impact, and content channels behind independent configuration.
+- [x] Add drift, circular wave, impact, and content channels behind independent configuration.
 - [x] Add rendering caps, idle suspension, and performance benchmarks.
 - [x] Verify nested ownership and effect cleanup.
+
+## Phase 4.6 — Signature renderer parity
+
+- [x] Restore viewport-spanning flow lines and staggered target acquisition before permanent rail construction.
+- [x] Upgrade Formation to four complete Line Forge rails with configurable overflow, style, fill, easing, and shared-plate Kinetic coordination.
+- [x] Remove the cursor cell lens and restore click-driven circular turbulent wave flow.
+- [x] Add square, connected hexagon, circle, and interlocked diamond geometry.
+- [x] Add three-level nested sizing, color bands and gradients, turbulence, growth, terminal overflow, stable seeds, and bounded multi-wave operation.
+- [x] Complete cross-browser visual verification of the upgraded renderers.
 
 ## Phase 5 — Framework support
 
@@ -83,3 +92,23 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 - [ ] Configure owner access to the `@dynt` npm organization.
 - [ ] Configure the protected GitHub `npm` environment and npm trusted publishers.
 - [ ] Publish the `v0.5.0` tag after the preview candidate is merged.
+
+## Planned formation releases
+
+The profile registry and lifecycle are already the shared foundation. Each profile must pass the same reversible lifecycle, cleanup, reduced-motion, responsive, and three-browser contracts before it is marked complete.
+
+### `0.6.x` — traced geometry
+
+- [x] Arc Trace.
+- [ ] Squircle Sweep.
+- [ ] Chamfer Fold.
+
+### `0.7.x` — segmented and radial geometry
+
+- [ ] Magnetic Segment.
+- [ ] Radial Compass.
+
+### `0.8.x` — aperture and membrane geometry
+
+- [ ] Aperture Iris.
+- [ ] Elastic Membrane.

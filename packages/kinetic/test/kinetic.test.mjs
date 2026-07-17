@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Window } from "happy-dom";
 
-import { createKinetic } from "../dist/index.js";
+import { createKinetic, kineticPresets } from "../dist/index.js";
 
 function flushMutations(window) {
   return new Promise((resolve) => window.setTimeout(resolve, 0));
@@ -57,6 +57,56 @@ function dispatchPointer(window, element, type, values = {}) {
   element.dispatchEvent(event);
 }
 
+function installCanvasContext(window) {
+  const operations = [];
+  const context = {
+    beginPath() {
+      operations.push("beginPath");
+    },
+    clearRect() {},
+    closePath() {
+      operations.push("closePath");
+    },
+    ellipse() {
+      operations.push("ellipse");
+    },
+    fill() {
+      operations.push("fill");
+    },
+    fillStyle: "",
+    globalAlpha: 1,
+    imageSmoothingEnabled: true,
+    lineTo() {
+      operations.push("lineTo");
+    },
+    moveTo() {
+      operations.push("moveTo");
+    },
+    rect() {
+      operations.push("rect");
+    },
+    setTransform() {},
+  };
+  window.HTMLCanvasElement.prototype.getContext = () => context;
+  return operations;
+}
+
+function installElementAnimations(window) {
+  const animations = [];
+  window.HTMLElement.prototype.animate = function animate(keyframes, options) {
+    const animation = {
+      cancel() {
+        animation.oncancel?.();
+      },
+      oncancel: null,
+      onfinish: null,
+    };
+    animations.push({ animation, keyframes, options, target: this });
+    return animation;
+  };
+  return animations;
+}
+
 test("enhances only matching HTML targets inside the supplied root", () => {
   const window = new Window();
   const document = window.document;
@@ -88,9 +138,9 @@ test("an explicitly supplied shadow root owns input within its boundary", () => 
   setRectangle(inside);
   const controller = createKinetic({ root: shadowRoot, selector: "button" });
 
-  dispatchPointer(window, inside, "pointermove", { pressure: 0.8 });
+  dispatchPointer(window, inside, "pointermove", { clientX: 100, pressure: 0.8 });
   frames.runNext();
-  assert.ok(Number.parseFloat(inside.style.getPropertyValue("--dynt-pressure")) > 0);
+  assert.notEqual(inside.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
   assert.equal(document.querySelector("#outside").hasAttribute("data-dynt-kinetic"), false);
 
   controller.destroy();
@@ -108,8 +158,114 @@ test("decoration layers are hidden from accessibility and omitted for void eleme
   const layer = document.querySelector("button [data-dynt-kinetic-layer]");
 
   assert.equal(layer.getAttribute("aria-hidden"), "true");
+  assert.equal(layer.querySelectorAll("[data-dynt-kinetic-canvas]").length, 1);
   assert.equal(document.querySelector("input").children.length, 0);
   assert.equal(controller.elements.length, 2);
+});
+
+test("canvas cells preserve geometry, nesting depth, local overrides, and wave flow", () => {
+  const window = new Window();
+  const operations = installCanvasContext(window);
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = `
+    <main class="surface">
+      <section class="surface">
+        <button class="surface" data-dynt-cell-shape="hexagon">Button</button>
+      </section>
+    </main>
+  `;
+  const surfaces = Array.from(document.querySelectorAll(".surface"));
+  surfaces.forEach((surface) => setRectangle(surface, { width: 240, height: 160 }));
+  const button = document.querySelector("button");
+  const controller = createKinetic({
+    root: document.querySelector("main"),
+    selector: ".surface",
+    effects: { wave: true },
+    cells: {
+      colorMode: "gradient",
+      colors: ["#164e63", "#22d3ee", "#ecfeff"],
+      shape: "square",
+      size: [40, 32, 24],
+    },
+    flow: { multi: true, maxWaves: 3, overflow: 14, turbulence: 0.4 },
+    motion: { response: 1, waveDuration: 100 },
+  });
+  const canvases = surfaces.map((surface) => (
+    Array.from(surface.children)
+      .find((child) => child.hasAttribute("data-dynt-kinetic-layer"))
+      .querySelector("[data-dynt-kinetic-canvas]")
+  ));
+
+  assert.deepEqual(canvases.map((canvas) => canvas.dataset.dyntCellSize), ["40", "32", "24"]);
+  assert.equal(canvases[2].dataset.dyntCellShape, "hexagon");
+
+  dispatchPointer(window, button, "pointermove", { clientX: 120, clientY: 80 });
+  frames.runNext();
+  assert.equal(canvases[2].dataset.dyntFlowCells, "0");
+  assert.equal(canvases[2].hasAttribute("data-dynt-field-cells"), false);
+
+  dispatchPointer(window, button, "pointerdown", { clientX: 60, clientY: 60 });
+  dispatchPointer(window, button, "pointerdown", { clientX: 160, clientY: 100 });
+  frames.runNext();
+  assert.equal(canvases[2].dataset.dyntFlowWaves, "2");
+  assert.ok(Number(canvases[2].dataset.dyntFlowCells) > 0);
+  assert.equal(canvases[2].dataset.dyntFlowModel, "radial-turbulent");
+  assert.ok(operations.includes("lineTo"));
+
+  controller.update({ cells: { shape: "diamond", size: 18 } });
+  assert.equal(canvases[2].dataset.dyntCellShape, "hexagon");
+  button.removeAttribute("data-dynt-cell-shape");
+  controller.refresh();
+  controller.impact(button);
+  frames.runNext();
+  assert.equal(canvases[2].dataset.dyntCellShape, "diamond");
+  assert.equal(canvases[2].dataset.dyntCellSize, "18");
+  controller.destroy();
+});
+
+test("built-in presets remain immutable and directly consumable by the core engine", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><article>Surface</article></main>";
+  const controller = createKinetic({
+    root: document.querySelector("main"),
+    selector: "article",
+    ...kineticPresets.locator,
+  });
+
+  assert.equal(Object.isFrozen(kineticPresets.locator), true);
+  assert.equal(kineticPresets.locator.cells.shape, "hexagon");
+  assert.equal(controller.elements.length, 1);
+  controller.destroy();
+});
+
+test("pointer hover does not render cells and click starts the circular wave", () => {
+  const window = new Window();
+  installCanvasContext(window);
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = "<main><article>Surface</article></main>";
+  const article = document.querySelector("article");
+  setRectangle(article, { width: 240, height: 160 });
+  const controller = createKinetic({
+    root: document.querySelector("main"),
+    selector: "article",
+    effects: { wave: true },
+    motion: { response: 1 },
+  });
+
+  dispatchPointer(window, article, "pointermove", { clientX: 120, clientY: 80 });
+  frames.runNext();
+  const canvas = article.querySelector("canvas");
+  assert.equal(canvas.dataset.dyntFlowCells, "0");
+  assert.equal(canvas.hasAttribute("data-dynt-field-cells"), false);
+
+  dispatchPointer(window, article, "pointerdown", { clientX: 120, clientY: 80 });
+  for (let frameCount = 0; frameCount < 4; frameCount += 1) frames.runNext();
+  assert.ok(Number(canvas.dataset.dyntFlowCells) > 0);
+  assert.equal(canvas.dataset.dyntFlowModel, "radial-turbulent");
+  controller.destroy();
 });
 
 test("respects built-in and custom excluded subtrees", () => {
@@ -191,7 +347,31 @@ test("repeated and nested controllers share one decoration until final cleanup",
   assert.equal(button.classList.contains("dynt-kinetic"), false);
 });
 
-test("delegated pointer input writes bounded pressure and tilt then becomes idle", () => {
+test("semantic reactors follow the most specific shared controller", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><section><button><span>Content</span></button></section></main>";
+  const button = document.querySelector("button");
+  const content = document.querySelector("span");
+  const outer = createKinetic({
+    root: document.querySelector("main"),
+    selector: "button",
+    effects: { content: false },
+  });
+  const inner = createKinetic({
+    root: document.querySelector("section"),
+    selector: "button",
+    effects: { content: true },
+  });
+
+  assert.equal(content.classList.contains("dynt-kinetic__reactor"), true);
+  inner.destroy();
+  assert.equal(content.classList.contains("dynt-kinetic__reactor"), false);
+  assert.equal(button.hasAttribute("data-dynt-kinetic"), true);
+  outer.destroy();
+});
+
+test("delegated pointer input writes bounded tilt then becomes idle", () => {
   const window = new Window();
   const frames = installAnimationFrames(window);
   const document = window.document;
@@ -211,9 +391,8 @@ test("delegated pointer input writes bounded pressure and tilt then becomes idle
 
   assert.equal(button.style.getPropertyValue("--dynt-pointer-x"), "100.00%");
   assert.equal(button.style.getPropertyValue("--dynt-pointer-y"), "50.00%");
-  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.2929");
   assert.equal(button.style.getPropertyValue("--dynt-tilt-x"), "0.000deg");
-  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "8.000deg");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "1.350deg");
   assert.equal(frames.count, 0);
 
   dispatchPointer(window, button, "pointermove", {
@@ -223,14 +402,96 @@ test("delegated pointer input writes bounded pressure and tilt then becomes idle
     pressure: 0.8,
   });
   frames.runNext();
-  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.8000");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-x"), "1.350deg");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "-1.350deg");
 
   dispatchPointer(window, main, "pointerleave");
   frames.runNext();
-  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.0000");
   assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
 
   controller.destroy();
+});
+
+test("corner tilt compresses the near overflow and raises the far edge", () => {
+  const window = new Window();
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = "<main><button style='--dynt-formation-overflow: 14px'>Button</button></main>";
+  const main = document.querySelector("main");
+  const button = document.querySelector("button");
+  setRectangle(button);
+  const controller = createKinetic({
+    root: main,
+    selector: "button",
+    motion: { response: 1 },
+  });
+
+  dispatchPointer(window, button, "pointermove", { clientX: 0, clientY: 0 });
+  frames.runNext();
+
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-x"), "1.350deg");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "-1.350deg");
+  assert.equal(button.style.getPropertyValue("--dynt-shadow-x"), "18.000px");
+  assert.equal(button.style.getPropertyValue("--dynt-shadow-y"), "22.000px");
+  assert.equal(button.style.getPropertyValue("--dynt-tl-overflow"), "6.300px");
+  assert.equal(button.style.getPropertyValue("--dynt-tr-overflow"), "17.189px");
+  assert.equal(button.style.getPropertyValue("--dynt-bl-overflow"), "17.189px");
+  assert.equal(button.style.getPropertyValue("--dynt-br-overflow"), "21.700px");
+
+  dispatchPointer(window, main, "pointerleave");
+  frames.runNext();
+  assert.equal(button.style.getPropertyValue("--dynt-tl-overflow"), "14.000px");
+  assert.equal(button.style.getPropertyValue("--dynt-tr-overflow"), "14.000px");
+  assert.equal(button.style.getPropertyValue("--dynt-bl-overflow"), "14.000px");
+  assert.equal(button.style.getPropertyValue("--dynt-br-overflow"), "14.000px");
+  controller.destroy();
+});
+
+test("tilt moves semantic content inside the engine-owned plate", () => {
+  const window = new Window();
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = `
+    <main>
+      <article class="surface">
+        <h2>Heading</h2>
+        <p style="--dynt-reactor-x: 2px">Supporting content</p>
+        <button class="surface"><span>Nested action</span></button>
+      </article>
+    </main>
+  `;
+  const article = document.querySelector("article");
+  const heading = document.querySelector("h2");
+  const paragraph = document.querySelector("p");
+  const nestedButton = document.querySelector("button");
+  setRectangle(article, { width: 300, height: 180 });
+  setRectangle(nestedButton, { left: 20, top: 100, width: 120, height: 40 });
+  const controller = createKinetic({
+    root: document.querySelector("main"),
+    selector: ".surface",
+    effects: { content: true },
+    motion: { contentTravel: 12, response: 1 },
+  });
+
+  assert.equal(heading.classList.contains("dynt-kinetic__reactor"), true);
+  assert.equal(paragraph.classList.contains("dynt-kinetic__reactor"), true);
+  assert.equal(nestedButton.classList.contains("dynt-kinetic__reactor"), false);
+  assert.equal(nestedButton.querySelector("span").classList.contains("dynt-kinetic__reactor"), true);
+
+  dispatchPointer(window, article, "pointermove", { clientX: 300, clientY: 0 });
+  frames.runNext();
+  assert.notEqual(heading.style.getPropertyValue("--dynt-reactor-x"), "0.000px");
+  assert.notEqual(heading.style.getPropertyValue("--dynt-reactor-y"), "0.000px");
+  assert.equal(
+    article.querySelector(":scope > [data-dynt-kinetic-layer]")
+      .querySelectorAll("[data-dynt-kinetic-corner]").length,
+    4,
+  );
+
+  controller.destroy();
+  assert.equal(heading.classList.contains("dynt-kinetic__reactor"), false);
+  assert.equal(heading.style.getPropertyValue("--dynt-reactor-x"), "");
+  assert.equal(paragraph.style.getPropertyValue("--dynt-reactor-x"), "2px");
 });
 
 test("nearest nested surface owns delegated pointer input", () => {
@@ -253,7 +514,7 @@ test("nearest nested surface owns delegated pointer input", () => {
   dispatchPointer(window, button, "pointermove", { clientX: 100 });
   frames.runNext();
 
-  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "8.000deg");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "1.350deg");
   assert.equal(main.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
   controller.destroy();
 });
@@ -324,16 +585,15 @@ test("pause and update control input without rebuilding targets", () => {
   assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
 
   controller.resume();
-  controller.update({ effects: { pressure: false }, motion: { maxTilt: 12 } });
+  controller.update({ motion: { maxTilt: 12 } });
   dispatchPointer(window, button, "pointermove", { clientX: 100 });
   frames.runNext();
-  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.0000");
   assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "12.000deg");
   assert.deepEqual(controller.elements, [button]);
   controller.destroy();
 });
 
-test("reduced motion preserves pressure without scheduling tilt", () => {
+test("reduced motion suppresses pointer tilt without scheduling frames", () => {
   const window = new Window();
   const frames = installAnimationFrames(window);
   window.matchMedia = () => ({ matches: true });
@@ -349,7 +609,6 @@ test("reduced motion preserves pressure without scheduling tilt", () => {
   dispatchPointer(window, button, "pointermove", { clientX: 50, clientY: 50 });
 
   assert.equal(frames.count, 0);
-  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "1.0000");
   assert.equal(button.style.getPropertyValue("--dynt-tilt-x"), "0.000deg");
   assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
   controller.destroy();
@@ -377,7 +636,7 @@ test("damped motion stops scheduling after reaching rest", () => {
 
   assert.equal(frames.count, 0);
   assert.equal(frameCount < 30, true);
-  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "8.000deg");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "1.350deg");
   controller.destroy();
 });
 
@@ -401,7 +660,7 @@ test("surface and active-reaction limits are enforced deterministically", () => 
   controller.impact(buttons[0]);
   controller.impact(buttons[1]);
   assert.equal(frames.count, 1);
-  assert.equal(buttons[0].style.getPropertyValue("--dynt-pressure"), "0.0000");
+  assert.equal(buttons[0].style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
 
   controller.update({ limits: { maxActive: 2, maxSurfaces: 3 } });
   assert.deepEqual(controller.elements.map((element) => element.id), ["one", "two", "three"]);
@@ -471,6 +730,42 @@ test("pointer waves replace prior reactions and finish within their duration", (
   controller.destroy();
 });
 
+test("wave impulses travel through semantic content with distance-timed lift", () => {
+  const window = new Window();
+  const animations = installElementAnimations(window);
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = `
+    <main><article><h2>Near</h2><p>Far</p></article></main>
+  `;
+  const article = document.querySelector("article");
+  const heading = document.querySelector("h2");
+  const paragraph = document.querySelector("p");
+  setRectangle(article, { left: 0, top: 0, width: 400, height: 200 });
+  setRectangle(heading, { left: 20, top: 40, width: 100, height: 30 });
+  setRectangle(paragraph, { left: 300, top: 130, width: 80, height: 30 });
+  const controller = createKinetic({
+    root: document.querySelector("main"),
+    selector: "article",
+    effects: { content: true, tilt: false, wave: true },
+    motion: { contentLift: 14, response: 1, waveDuration: 600 },
+  });
+
+  dispatchPointer(window, article, "pointerdown", { clientX: 20, clientY: 50 });
+  frames.runNext();
+
+  assert.equal(animations.length, 2);
+  const near = animations.find(({ target }) => target === heading);
+  const far = animations.find(({ target }) => target === paragraph);
+  assert.equal(near.options.delay < far.options.delay, true);
+  assert.equal(near.options.duration, 456);
+  assert.equal(Number.parseFloat(near.keyframes[1].translate.split(" ")[1]) < -8, true);
+
+  dispatchPointer(window, article, "pointerdown", { clientX: 20, clientY: 50 });
+  assert.equal(animations.length, 4);
+  controller.destroy();
+});
+
 test("impact produces one bounded rebound and content response channel", () => {
   const window = new Window();
   const frames = installAnimationFrames(window);
@@ -489,9 +784,8 @@ test("impact produces one bounded rebound and content response channel", () => {
   controller.impact(inside, { pressure: 0.8, x: 0.5, y: -0.5 });
   assert.equal(frames.count, 1);
   frames.runNext();
-  assert.equal(Number(inside.style.getPropertyValue("--dynt-pressure")) > 0, true);
-  assert.equal(inside.style.getPropertyValue("--dynt-content-x"), "1.000px");
-  assert.equal(inside.style.getPropertyValue("--dynt-content-y"), "-1.000px");
+  assert.equal(inside.style.getPropertyValue("--dynt-content-x"), "0.750px");
+  assert.equal(inside.style.getPropertyValue("--dynt-content-y"), "-0.750px");
 
   let frameCount = 0;
   while (frames.count > 0 && frameCount < 40) {
@@ -499,7 +793,6 @@ test("impact produces one bounded rebound and content response channel", () => {
     frameCount += 1;
   }
   assert.equal(frames.count, 0);
-  assert.equal(inside.style.getPropertyValue("--dynt-pressure"), "0.0000");
   assert.equal(inside.style.getPropertyValue("--dynt-content-x"), "0.000px");
   assert.throws(
     () => controller.impact(document.querySelector("#outside")),
@@ -512,7 +805,7 @@ test("impact produces one bounded rebound and content response channel", () => {
   controller.destroy();
 });
 
-test("reduced-motion impact uses a static cue without animation frames", async () => {
+test("reduced-motion impact remains at rest without animation frames", () => {
   const window = new Window();
   const frames = installAnimationFrames(window);
   window.matchMedia = () => ({ matches: true });
@@ -526,9 +819,8 @@ test("reduced-motion impact uses a static cue without animation frames", async (
 
   controller.impact(button);
   assert.equal(frames.count, 0);
-  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "1.0000");
-  await new Promise((resolve) => window.setTimeout(resolve, 140));
-  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.0000");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-x"), "0.000deg");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
   controller.destroy();
 });
 
@@ -537,7 +829,8 @@ test("destroy restores application motion properties exactly", () => {
   const document = window.document;
   document.body.innerHTML = "<main><button>Button</button></main>";
   const button = document.querySelector("button");
-  button.style.setProperty("--dynt-pressure", "0.4", "important");
+  button.style.setProperty("--application-depth", "0.4", "important");
+  button.style.setProperty("--dynt-tl-overflow", "7px", "important");
   const controller = createKinetic({
     root: document.querySelector("main"),
     selector: "button",
@@ -545,8 +838,10 @@ test("destroy restores application motion properties exactly", () => {
 
   controller.destroy();
 
-  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.4");
-  assert.equal(button.style.getPropertyPriority("--dynt-pressure"), "important");
+  assert.equal(button.style.getPropertyValue("--application-depth"), "0.4");
+  assert.equal(button.style.getPropertyPriority("--application-depth"), "important");
+  assert.equal(button.style.getPropertyValue("--dynt-tl-overflow"), "7px");
+  assert.equal(button.style.getPropertyPriority("--dynt-tl-overflow"), "important");
   assert.equal(button.style.getPropertyValue("--dynt-tilt-x"), "");
 });
 
@@ -589,7 +884,11 @@ test("pause, resume, destroy, and input validation are idempotent", () => {
       selector: "button",
       effects: { pressure: "yes" },
     }),
-    /effects must be boolean values/,
+    /unknown effect: pressure/,
+  );
+  assert.throws(
+    () => createKinetic({ root: document, selector: "button", field: {} }),
+    /unknown option: field/,
   );
   assert.throws(
     () => createKinetic({
@@ -614,5 +913,37 @@ test("pause, resume, destroy, and input validation are idempotent", () => {
       limits: { maxActive: 0 },
     }),
     /maxActive must be an integer between 1 and 1000/,
+  );
+  assert.throws(
+    () => createKinetic({
+      root: document,
+      selector: "button",
+      cells: { shape: "triangle" },
+    }),
+    /cell shape must be square, hexagon, circle, or diamond/,
+  );
+  assert.throws(
+    () => createKinetic({
+      root: document,
+      selector: "button",
+      cells: { size: [40, 20] },
+    }),
+    /three-level size tree/,
+  );
+  assert.throws(
+    () => createKinetic({
+      root: document,
+      selector: "button",
+      flow: { overflow: 65 },
+    }),
+    /flow overflow must be between 0 and 64 pixels/,
+  );
+  assert.throws(
+    () => createKinetic({
+      root: document,
+      selector: "button",
+      flow: { unknown: true },
+    }),
+    /unknown flow option/,
   );
 });
