@@ -57,6 +57,40 @@ function dispatchPointer(window, element, type, values = {}) {
   element.dispatchEvent(event);
 }
 
+function installCanvasContext(window) {
+  const operations = [];
+  const context = {
+    beginPath() {
+      operations.push("beginPath");
+    },
+    clearRect() {},
+    closePath() {
+      operations.push("closePath");
+    },
+    ellipse() {
+      operations.push("ellipse");
+    },
+    fill() {
+      operations.push("fill");
+    },
+    fillStyle: "",
+    globalAlpha: 1,
+    imageSmoothingEnabled: true,
+    lineTo() {
+      operations.push("lineTo");
+    },
+    moveTo() {
+      operations.push("moveTo");
+    },
+    rect() {
+      operations.push("rect");
+    },
+    setTransform() {},
+  };
+  window.HTMLCanvasElement.prototype.getContext = () => context;
+  return operations;
+}
+
 test("enhances only matching HTML targets inside the supplied root", () => {
   const window = new Window();
   const document = window.document;
@@ -108,8 +142,95 @@ test("decoration layers are hidden from accessibility and omitted for void eleme
   const layer = document.querySelector("button [data-dynt-kinetic-layer]");
 
   assert.equal(layer.getAttribute("aria-hidden"), "true");
+  assert.equal(layer.querySelectorAll("[data-dynt-kinetic-canvas]").length, 1);
   assert.equal(document.querySelector("input").children.length, 0);
   assert.equal(controller.elements.length, 2);
+});
+
+test("canvas cells preserve geometry, nesting depth, local overrides, and wave flow", () => {
+  const window = new Window();
+  const operations = installCanvasContext(window);
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = `
+    <main class="surface">
+      <section class="surface">
+        <button class="surface" data-dynt-cell-shape="hexagon">Button</button>
+      </section>
+    </main>
+  `;
+  const surfaces = Array.from(document.querySelectorAll(".surface"));
+  surfaces.forEach((surface) => setRectangle(surface, { width: 240, height: 160 }));
+  const button = document.querySelector("button");
+  const controller = createKinetic({
+    root: document.querySelector("main"),
+    selector: ".surface",
+    effects: { wave: true },
+    cells: {
+      colorMode: "gradient",
+      colors: ["#164e63", "#22d3ee", "#ecfeff"],
+      shape: "square",
+      size: [40, 32, 24],
+    },
+    field: { maxCells: 61, radius: 3 },
+    flow: { multi: true, maxWaves: 3, overflow: 14, turbulence: 0.4 },
+    motion: { response: 1, waveDuration: 100 },
+  });
+  const canvases = surfaces.map((surface) => (
+    Array.from(surface.children)
+      .find((child) => child.hasAttribute("data-dynt-kinetic-layer"))
+      .querySelector("[data-dynt-kinetic-canvas]")
+  ));
+
+  assert.deepEqual(canvases.map((canvas) => canvas.dataset.dyntCellSize), ["40", "32", "24"]);
+  assert.equal(canvases[2].dataset.dyntCellShape, "hexagon");
+
+  dispatchPointer(window, button, "pointermove", { clientX: 120, clientY: 80 });
+  frames.runNext();
+  assert.ok(Number(canvases[2].dataset.dyntFieldCells) > 0);
+  assert.ok(operations.includes("lineTo"));
+
+  dispatchPointer(window, button, "pointerdown", { clientX: 60, clientY: 60 });
+  dispatchPointer(window, button, "pointerdown", { clientX: 160, clientY: 100 });
+  frames.runNext();
+  assert.equal(canvases[2].dataset.dyntFlowWaves, "2");
+  assert.ok(Number(canvases[2].dataset.dyntFlowCells) > 0);
+
+  controller.update({ cells: { shape: "diamond", size: 18 } });
+  assert.equal(canvases[2].dataset.dyntCellShape, "hexagon");
+  button.removeAttribute("data-dynt-cell-shape");
+  controller.refresh();
+  controller.impact(button);
+  frames.runNext();
+  assert.equal(canvases[2].dataset.dyntCellShape, "diamond");
+  assert.equal(canvases[2].dataset.dyntCellSize, "18");
+  controller.destroy();
+});
+
+test("the local pressure field suppresses itself after pointer stillness", async () => {
+  const window = new Window();
+  installCanvasContext(window);
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = "<main><article>Surface</article></main>";
+  const article = document.querySelector("article");
+  setRectangle(article, { width: 240, height: 160 });
+  const controller = createKinetic({
+    root: document.querySelector("main"),
+    selector: "article",
+    field: { idleDelay: 40 },
+    motion: { response: 1 },
+  });
+
+  dispatchPointer(window, article, "pointermove", { clientX: 120, clientY: 80 });
+  frames.runNext();
+  assert.ok(Number(article.querySelector("canvas").dataset.dyntFieldCells) > 0);
+
+  await new Promise((resolve) => window.setTimeout(resolve, 55));
+  frames.runNext();
+  assert.equal(article.style.getPropertyValue("--dynt-pressure"), "0.0000");
+  assert.equal(article.querySelector("canvas").dataset.dyntFieldCells, "0");
+  controller.destroy();
 });
 
 test("respects built-in and custom excluded subtrees", () => {
@@ -614,5 +735,45 @@ test("pause, resume, destroy, and input validation are idempotent", () => {
       limits: { maxActive: 0 },
     }),
     /maxActive must be an integer between 1 and 1000/,
+  );
+  assert.throws(
+    () => createKinetic({
+      root: document,
+      selector: "button",
+      cells: { shape: "triangle" },
+    }),
+    /cell shape must be square, hexagon, circle, or diamond/,
+  );
+  assert.throws(
+    () => createKinetic({
+      root: document,
+      selector: "button",
+      cells: { size: [40, 20] },
+    }),
+    /three-level size tree/,
+  );
+  assert.throws(
+    () => createKinetic({
+      root: document,
+      selector: "button",
+      field: { maxCells: 0 },
+    }),
+    /field maxCells must be an integer between 1 and 256/,
+  );
+  assert.throws(
+    () => createKinetic({
+      root: document,
+      selector: "button",
+      flow: { overflow: 65 },
+    }),
+    /flow overflow must be between 0 and 64 pixels/,
+  );
+  assert.throws(
+    () => createKinetic({
+      root: document,
+      selector: "button",
+      flow: { unknown: true },
+    }),
+    /unknown flow option/,
   );
 });

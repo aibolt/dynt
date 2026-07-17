@@ -1,10 +1,9 @@
 :where(.dynt-kinetic) {
-  --dynt-cell-size: 18px;
   --dynt-content-x: 0px;
   --dynt-content-y: 0px;
   --dynt-drift-x: 0px;
   --dynt-drift-y: 0px;
-  --dynt-kinetic-color: rgb(103 232 249 / 0.3);
+  --dynt-kinetic-color: rgb(103 232 249 / 0.72);
   --dynt-pointer-x: 50%;
   --dynt-pointer-y: 50%;
   --dynt-pressure: 0;
@@ -20,25 +19,10 @@
 
 :where(.dynt-kinetic__layer) {
   border-radius: inherit;
-  background-image:
-    linear-gradient(to right, var(--dynt-kinetic-color) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--dynt-kinetic-color) 1px, transparent 1px);
-  background-position: var(--dynt-pointer-x) var(--dynt-pointer-y);
-  background-size: var(--dynt-cell-size) var(--dynt-cell-size);
   inset: 0;
-  opacity: var(--dynt-pressure);
+  overflow: visible;
   pointer-events: none;
   position: absolute;
-  -webkit-mask-image: radial-gradient(
-    circle at var(--dynt-pointer-x) var(--dynt-pointer-y),
-    black 0,
-    transparent 70%
-  );
-  mask-image: radial-gradient(
-    circle at var(--dynt-pointer-x) var(--dynt-pointer-y),
-    black 0,
-    transparent 70%
-  );
   transform:
     translate3d(var(--dynt-drift-x), var(--dynt-drift-y), 0)
     perspective(700px)
@@ -48,27 +32,16 @@
   z-index: 0;
 }
 
-:where(.dynt-kinetic__layer)::after {
-  aspect-ratio: 1;
-  border: 1px solid var(--dynt-kinetic-color);
-  border-radius: 50%;
-  content: "";
-  left: var(--dynt-wave-x);
-  opacity: var(--dynt-wave-opacity);
+:where(.dynt-kinetic__canvas) {
+  display: block;
+  max-height: none;
+  max-width: none;
+  pointer-events: none;
   position: absolute;
-  top: var(--dynt-wave-y);
-  transform: translate(-50%, -50%) scale(var(--dynt-wave-scale));
-  width: 24%;
 }
 
 @media (prefers-reduced-motion: reduce) {
   :where(.dynt-kinetic__layer) {
-    -webkit-mask-image: none;
-    mask-image: none;
     transform: none;
-  }
-
-  :where(.dynt-kinetic__layer)::after {
-    display: none;
   }
 }

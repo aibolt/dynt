@@ -1,3 +1,15 @@
+import type { KineticCellShape } from "./geometry.js";
+import {
+  renderKineticCanvas,
+  type KineticColorMode,
+  type ResolvedCellConfiguration,
+  type ResolvedFieldConfiguration,
+  type ResolvedFlowConfiguration,
+} from "./rendering.js";
+
+export type { KineticCellShape } from "./geometry.js";
+export type { KineticColorMode } from "./rendering.js";
+
 export type KineticRoot = Document | DocumentFragment | HTMLElement;
 
 export type KineticEffects = Readonly<{
@@ -20,6 +32,39 @@ export type KineticLimits = Readonly<{
   maxSurfaces?: number;
 }>;
 
+export type KineticCells = Readonly<{
+  colorMode?: KineticColorMode;
+  colors?: readonly string[];
+  gap?: number;
+  shape?: KineticCellShape;
+  size?: number | readonly [number, number, number];
+}>;
+
+export type KineticField = Readonly<{
+  idleDelay?: number;
+  intensity?: number;
+  maxCells?: number;
+  noise?: number;
+  radius?: number;
+  tail?: number;
+}>;
+
+export type KineticFlow = Readonly<{
+  growth?: number;
+  intensity?: number;
+  maxCells?: number;
+  maxWaves?: number;
+  multi?: boolean;
+  overflow?: number;
+  recovery?: number;
+  seed?: number;
+  seedLocked?: boolean;
+  speed?: number;
+  thickness?: number;
+  turbulence?: number;
+  turbulenceScale?: number;
+}>;
+
 export type KineticImpactInput = Readonly<{
   pressure?: number;
   x?: number;
@@ -27,7 +72,10 @@ export type KineticImpactInput = Readonly<{
 }>;
 
 export type KineticUpdateOptions = Readonly<{
+  cells?: KineticCells;
   effects?: KineticEffects;
+  field?: KineticField;
+  flow?: KineticFlow;
   limits?: KineticLimits;
   motion?: KineticMotion;
 }>;
@@ -37,7 +85,10 @@ export type KineticOptions = Readonly<{
   selector: string;
   exclude?: string;
   observe?: boolean;
+  cells?: KineticCells;
   effects?: KineticEffects;
+  field?: KineticField;
+  flow?: KineticFlow;
   limits?: KineticLimits;
   motion?: KineticMotion;
 }>;
@@ -54,9 +105,12 @@ export type KineticController = Readonly<{
 }>;
 
 type KineticConfiguration = Readonly<{
+  cells: ResolvedCellConfiguration;
   content: boolean;
   drift: boolean;
   driftAmount: number;
+  field: ResolvedFieldConfiguration;
+  flow: ResolvedFlowConfiguration;
   maxActive: number;
   maxSurfaces: number;
   maxTilt: number;
@@ -104,10 +158,18 @@ type MotionValues = {
   y: number;
 };
 
+type MotionFlow = {
+  progress: number;
+  startedAt: number;
+  x: number;
+  y: number;
+};
+
 type MotionState = {
   current: MotionValues;
   driftX: number;
   driftY: number;
+  flows: MotionFlow[];
   impactStartedAt: number | null;
   target: MotionValues;
   waveProgress: number;
@@ -118,6 +180,7 @@ type MotionState = {
 
 type ElementOwnership = {
   activeOwner: KineticOwner | null;
+  canvas: HTMLCanvasElement | null;
   element: HTMLElement;
   layer: HTMLElement | null;
   owners: Set<KineticOwner>;
@@ -129,15 +192,46 @@ const BASE_CLASS = "dynt-kinetic";
 const DEFAULT_EXCLUDE_SELECTOR = "[data-dynt-ignore]";
 const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 const KINETIC_ATTRIBUTE = "data-dynt-kinetic";
+const CANVAS_ATTRIBUTE = "data-dynt-kinetic-canvas";
 const LAYER_ATTRIBUTE = "data-dynt-kinetic-layer";
 const FORMATION_PHASE_ATTRIBUTE = "data-dynt-formation-phase";
 const FORMATION_PHASE_EVENT = "dynt:formation-phase";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const REST_EPSILON = 0.001;
 const DEFAULT_CONFIGURATION: KineticConfiguration = Object.freeze({
+  cells: Object.freeze({
+    colorMode: "single",
+    colors: Object.freeze(["#67e8f9"]),
+    gap: 1,
+    shape: "square",
+    sizes: Object.freeze([40, 32, 24]) as readonly [number, number, number],
+  }),
   content: false,
   drift: false,
   driftAmount: 1.5,
+  field: Object.freeze({
+    idleDelay: 120,
+    intensity: 1,
+    maxCells: 61,
+    noise: 0.18,
+    radius: 3,
+    tail: 1.55,
+  }),
+  flow: Object.freeze({
+    growth: 1,
+    intensity: 1,
+    maxCells: 420,
+    maxWaves: 4,
+    multi: false,
+    overflow: 14,
+    recovery: 1,
+    seed: 37,
+    seedLocked: false,
+    speed: 1,
+    thickness: 1,
+    turbulence: 0.38,
+    turbulenceScale: 4,
+  }),
   maxActive: 24,
   maxSurfaces: 250,
   maxTilt: 8,
@@ -184,6 +278,9 @@ function normalizeConfiguration(
   effects: KineticEffects | undefined,
   motion: KineticMotion | undefined,
   limits: KineticLimits | undefined,
+  cells: KineticCells | undefined,
+  field: KineticField | undefined,
+  flow: KineticFlow | undefined,
   base = DEFAULT_CONFIGURATION,
 ): KineticConfiguration {
   if (effects !== undefined && (!effects || typeof effects !== "object" || Array.isArray(effects))) {
@@ -194,6 +291,15 @@ function normalizeConfiguration(
   }
   if (limits !== undefined && (!limits || typeof limits !== "object" || Array.isArray(limits))) {
     throw new TypeError("DYNT Kinetic limits must be an object.");
+  }
+  if (cells !== undefined && (!cells || typeof cells !== "object" || Array.isArray(cells))) {
+    throw new TypeError("DYNT Kinetic cells must be an object.");
+  }
+  if (field !== undefined && (!field || typeof field !== "object" || Array.isArray(field))) {
+    throw new TypeError("DYNT Kinetic field must be an object.");
+  }
+  if (flow !== undefined && (!flow || typeof flow !== "object" || Array.isArray(flow))) {
+    throw new TypeError("DYNT Kinetic flow must be an object.");
   }
   for (const name of Object.keys(effects ?? {})) {
     if (
@@ -221,6 +327,48 @@ function normalizeConfiguration(
       throw new TypeError(`DYNT Kinetic received an unknown limit: ${name}.`);
     }
   }
+  for (const name of Object.keys(cells ?? {})) {
+    if (
+      name !== "colorMode"
+      && name !== "colors"
+      && name !== "gap"
+      && name !== "shape"
+      && name !== "size"
+    ) {
+      throw new TypeError(`DYNT Kinetic received an unknown cells option: ${name}.`);
+    }
+  }
+  for (const name of Object.keys(field ?? {})) {
+    if (
+      name !== "idleDelay"
+      && name !== "intensity"
+      && name !== "maxCells"
+      && name !== "noise"
+      && name !== "radius"
+      && name !== "tail"
+    ) {
+      throw new TypeError(`DYNT Kinetic received an unknown field option: ${name}.`);
+    }
+  }
+  for (const name of Object.keys(flow ?? {})) {
+    if (
+      name !== "growth"
+      && name !== "intensity"
+      && name !== "maxCells"
+      && name !== "maxWaves"
+      && name !== "multi"
+      && name !== "overflow"
+      && name !== "recovery"
+      && name !== "seed"
+      && name !== "seedLocked"
+      && name !== "speed"
+      && name !== "thickness"
+      && name !== "turbulence"
+      && name !== "turbulenceScale"
+    ) {
+      throw new TypeError(`DYNT Kinetic received an unknown flow option: ${name}.`);
+    }
+  }
 
   const content = effects?.content ?? base.content;
   const drift = effects?.drift ?? base.drift;
@@ -233,6 +381,35 @@ function normalizeConfiguration(
   const maxTilt = motion?.maxTilt ?? base.maxTilt;
   const response = motion?.response ?? base.response;
   const waveDuration = motion?.waveDuration ?? base.waveDuration;
+  const cellShape = cells?.shape ?? base.cells.shape;
+  const cellGap = cells?.gap ?? base.cells.gap;
+  const colorMode = cells?.colorMode ?? base.cells.colorMode;
+  const colors = cells?.colors ?? base.cells.colors;
+  const size = cells?.size ?? base.cells.sizes;
+  const sizes = typeof size === "number" ? [size, size, size] : size;
+  const fieldConfiguration = {
+    idleDelay: field?.idleDelay ?? base.field.idleDelay,
+    intensity: field?.intensity ?? base.field.intensity,
+    maxCells: field?.maxCells ?? base.field.maxCells,
+    noise: field?.noise ?? base.field.noise,
+    radius: field?.radius ?? base.field.radius,
+    tail: field?.tail ?? base.field.tail,
+  };
+  const flowConfiguration = {
+    growth: flow?.growth ?? base.flow.growth,
+    intensity: flow?.intensity ?? base.flow.intensity,
+    maxCells: flow?.maxCells ?? base.flow.maxCells,
+    maxWaves: flow?.maxWaves ?? base.flow.maxWaves,
+    multi: flow?.multi ?? base.flow.multi,
+    overflow: flow?.overflow ?? base.flow.overflow,
+    recovery: flow?.recovery ?? base.flow.recovery,
+    seed: flow?.seed ?? base.flow.seed,
+    seedLocked: flow?.seedLocked ?? base.flow.seedLocked,
+    speed: flow?.speed ?? base.flow.speed,
+    thickness: flow?.thickness ?? base.flow.thickness,
+    turbulence: flow?.turbulence ?? base.flow.turbulence,
+    turbulenceScale: flow?.turbulenceScale ?? base.flow.turbulenceScale,
+  };
   if (
     typeof content !== "boolean"
     || typeof drift !== "boolean"
@@ -260,11 +437,122 @@ function normalizeConfiguration(
   if (!Number.isInteger(maxSurfaces) || maxSurfaces < 1 || maxSurfaces > 10000) {
     throw new TypeError("DYNT Kinetic maxSurfaces must be an integer between 1 and 10000.");
   }
+  if (!["square", "hexagon", "circle", "diamond"].includes(cellShape)) {
+    throw new TypeError("DYNT Kinetic cell shape must be square, hexagon, circle, or diamond.");
+  }
+  if (!["single", "bands", "gradient"].includes(colorMode)) {
+    throw new TypeError("DYNT Kinetic colorMode must be single, bands, or gradient.");
+  }
+  if (!Number.isFinite(cellGap) || cellGap < 0 || cellGap > 8) {
+    throw new TypeError("DYNT Kinetic cell gap must be between 0 and 8 pixels.");
+  }
+  if (
+    !Array.isArray(sizes)
+    || sizes.length !== 3
+    || sizes.some((value) => !Number.isFinite(value) || value < 8 || value > 120)
+  ) {
+    throw new TypeError("DYNT Kinetic cell size must be 8 to 120 pixels or a three-level size tree.");
+  }
+  if (
+    !Array.isArray(colors)
+    || colors.length < 1
+    || colors.length > 8
+    || colors.some((color) => typeof color !== "string" || !color.trim())
+  ) {
+    throw new TypeError("DYNT Kinetic colors must contain one to eight non-empty CSS colors.");
+  }
+  if (
+    !Number.isFinite(fieldConfiguration.radius)
+    || fieldConfiguration.radius < 1
+    || fieldConfiguration.radius > 8
+  ) {
+    throw new TypeError("DYNT Kinetic field radius must be between 1 and 8 cells.");
+  }
+  if (
+    !Number.isFinite(fieldConfiguration.tail)
+    || fieldConfiguration.tail < 0.5
+    || fieldConfiguration.tail > 4
+  ) {
+    throw new TypeError("DYNT Kinetic field tail must be between 0.5 and 4.");
+  }
+  if (
+    !Number.isFinite(fieldConfiguration.noise)
+    || fieldConfiguration.noise < 0
+    || fieldConfiguration.noise > 1
+  ) {
+    throw new TypeError("DYNT Kinetic field noise must be between 0 and 1.");
+  }
+  if (
+    !Number.isFinite(fieldConfiguration.intensity)
+    || fieldConfiguration.intensity < 0.1
+    || fieldConfiguration.intensity > 2
+  ) {
+    throw new TypeError("DYNT Kinetic field intensity must be between 0.1 and 2.");
+  }
+  if (
+    !Number.isInteger(fieldConfiguration.idleDelay)
+    || fieldConfiguration.idleDelay < 40
+    || fieldConfiguration.idleDelay > 1000
+  ) {
+    throw new TypeError("DYNT Kinetic field idleDelay must be an integer between 40 and 1000 milliseconds.");
+  }
+  if (
+    !Number.isInteger(fieldConfiguration.maxCells)
+    || fieldConfiguration.maxCells < 1
+    || fieldConfiguration.maxCells > 256
+  ) {
+    throw new TypeError("DYNT Kinetic field maxCells must be an integer between 1 and 256.");
+  }
+  if (!Number.isFinite(flowConfiguration.speed) || flowConfiguration.speed < 0.25 || flowConfiguration.speed > 2.5) {
+    throw new TypeError("DYNT Kinetic flow speed must be between 0.25 and 2.5.");
+  }
+  if (!Number.isFinite(flowConfiguration.thickness) || flowConfiguration.thickness < 0.5 || flowConfiguration.thickness > 2.5) {
+    throw new TypeError("DYNT Kinetic flow thickness must be between 0.5 and 2.5.");
+  }
+  if (!Number.isFinite(flowConfiguration.recovery) || flowConfiguration.recovery < 0.5 || flowConfiguration.recovery > 2) {
+    throw new TypeError("DYNT Kinetic flow recovery must be between 0.5 and 2.");
+  }
+  if (!Number.isFinite(flowConfiguration.intensity) || flowConfiguration.intensity < 0.1 || flowConfiguration.intensity > 2) {
+    throw new TypeError("DYNT Kinetic flow intensity must be between 0.1 and 2.");
+  }
+  if (!Number.isFinite(flowConfiguration.turbulence) || flowConfiguration.turbulence < 0 || flowConfiguration.turbulence > 1) {
+    throw new TypeError("DYNT Kinetic flow turbulence must be between 0 and 1.");
+  }
+  if (!Number.isFinite(flowConfiguration.turbulenceScale) || flowConfiguration.turbulenceScale < 1 || flowConfiguration.turbulenceScale > 8) {
+    throw new TypeError("DYNT Kinetic flow turbulenceScale must be between 1 and 8.");
+  }
+  if (!Number.isFinite(flowConfiguration.growth) || flowConfiguration.growth < 0 || flowConfiguration.growth > 1) {
+    throw new TypeError("DYNT Kinetic flow growth must be between 0 and 1.");
+  }
+  if (!Number.isFinite(flowConfiguration.overflow) || flowConfiguration.overflow < 0 || flowConfiguration.overflow > 64) {
+    throw new TypeError("DYNT Kinetic flow overflow must be between 0 and 64 pixels.");
+  }
+  if (!Number.isInteger(flowConfiguration.maxCells) || flowConfiguration.maxCells < 16 || flowConfiguration.maxCells > 2000) {
+    throw new TypeError("DYNT Kinetic flow maxCells must be an integer between 16 and 2000.");
+  }
+  if (!Number.isInteger(flowConfiguration.maxWaves) || flowConfiguration.maxWaves < 1 || flowConfiguration.maxWaves > 8) {
+    throw new TypeError("DYNT Kinetic flow maxWaves must be an integer between 1 and 8.");
+  }
+  if (typeof flowConfiguration.multi !== "boolean" || typeof flowConfiguration.seedLocked !== "boolean") {
+    throw new TypeError("DYNT Kinetic flow multi and seedLocked must be boolean values.");
+  }
+  if (!Number.isInteger(flowConfiguration.seed) || flowConfiguration.seed < 0 || flowConfiguration.seed > 999999) {
+    throw new TypeError("DYNT Kinetic flow seed must be an integer between 0 and 999999.");
+  }
 
   return Object.freeze({
+    cells: Object.freeze({
+      colorMode,
+      colors: Object.freeze([...colors]),
+      gap: cellGap,
+      shape: cellShape,
+      sizes: Object.freeze([...sizes]) as readonly [number, number, number],
+    }),
     content,
     drift,
     driftAmount,
+    field: Object.freeze(fieldConfiguration),
+    flow: Object.freeze(flowConfiguration),
     maxActive,
     maxSurfaces,
     maxTilt,
@@ -289,6 +577,7 @@ function createMotionState(): MotionState {
     current: createRestValues(),
     driftX: 0,
     driftY: 0,
+    flows: [],
     impactStartedAt: null,
     target: createRestValues(),
     waveProgress: 1,
@@ -380,6 +669,12 @@ function writeMotionState(ownership: ElementOwnership) {
     "wave-opacity",
     (state.waveStartedAt === null ? 0 : (1 - state.waveProgress) * 0.75).toFixed(4),
   );
+  renderKineticCanvas(ownership.canvas, element, configuration, {
+    flows: state.flows,
+    pressure: state.current.pressure,
+    x: state.current.x,
+    y: state.current.y,
+  });
 }
 
 function restoreMotionStyles(element: HTMLElement, snapshot: ElementSnapshot) {
@@ -451,20 +746,27 @@ function findTargets(root: KineticRoot, selector: string, excludeSelector: strin
 }
 
 function createLayer(element: HTMLElement) {
-  if (VOID_ELEMENTS.has(element.tagName)) return null;
+  if (VOID_ELEMENTS.has(element.tagName)) return { canvas: null, layer: null };
 
   const layer = element.ownerDocument.createElement("span");
+  const canvas = element.ownerDocument.createElement("canvas");
   layer.className = "dynt-kinetic__layer";
   layer.setAttribute(LAYER_ATTRIBUTE, "");
   layer.setAttribute("aria-hidden", "true");
+  canvas.className = "dynt-kinetic__canvas";
+  canvas.setAttribute(CANVAS_ATTRIBUTE, "");
+  layer.append(canvas);
   element.append(layer);
-  return layer;
+  return { canvas, layer };
 }
 
 function ensureLayer(element: HTMLElement, ownership: ElementOwnership) {
   if (ownership.layer?.parentElement === element || VOID_ELEMENTS.has(element.tagName)) return;
   ownership.layer?.remove();
-  ownership.layer = createLayer(element);
+  const decoration = createLayer(element);
+  ownership.canvas = decoration.canvas;
+  ownership.layer = decoration.layer;
+  writeMotionState(ownership);
 }
 
 export function createKinetic({
@@ -472,7 +774,10 @@ export function createKinetic({
   selector,
   exclude,
   observe = false,
+  cells,
   effects,
+  field,
+  flow,
   limits,
   motion,
 }: KineticOptions): KineticController {
@@ -491,7 +796,7 @@ export function createKinetic({
     : DEFAULT_EXCLUDE_SELECTOR;
   validateSelector(root, selector, "target");
   validateSelector(root, excludeSelector, "exclude");
-  const configuration = normalizeConfiguration(effects, motion, limits);
+  const configuration = normalizeConfiguration(effects, motion, limits, cells, field, flow);
   const elements = new Set<HTMLElement>();
   const owner: KineticOwner = { configuration, root };
   const document = root.nodeType === 9 ? root as Document : root.ownerDocument;
@@ -508,6 +813,7 @@ export function createKinetic({
   let frame: number | undefined;
   let activeElement: HTMLElement | null = null;
   const activeStates = new Set<ElementOwnership>();
+  const fieldTimers = new Map<ElementOwnership, number>();
   const reducedImpactTimers = new Map<ElementOwnership, number>();
 
   function prefersReducedMotion() {
@@ -525,6 +831,27 @@ export function createKinetic({
       && Math.abs(state.current.pressure - state.target.pressure) <= REST_EPSILON
       && Math.abs(state.driftX) <= REST_EPSILON
       && Math.abs(state.driftY) <= REST_EPSILON;
+  }
+
+  function clearFieldTimer(ownership: ElementOwnership) {
+    const timer = fieldTimers.get(ownership);
+    if (timer !== undefined) view?.clearTimeout(timer);
+    fieldTimers.delete(ownership);
+  }
+
+  function scheduleFieldSuppression(ownership: ElementOwnership) {
+    clearFieldTimer(ownership);
+    if (!owner.configuration.pressure || !view) return;
+    const timer = view.setTimeout(() => {
+      fieldTimers.delete(ownership);
+      if (ownership.activeOwner !== owner || activeElement !== ownership.element) return;
+      ownership.state.target = {
+        ...ownership.state.target,
+        pressure: 0,
+      };
+      scheduleMotion(ownership);
+    }, owner.configuration.field.idleDelay);
+    fieldTimers.set(ownership, timer);
   }
 
   function animate(timestamp: number) {
@@ -547,15 +874,21 @@ export function createKinetic({
           state.target = createRestValues();
         }
       }
-      if (state.waveStartedAt !== null) {
-        if (state.waveStartedAt < 0) state.waveStartedAt = timestamp;
-        state.waveProgress = clamp(
-          (timestamp - state.waveStartedAt) / owner.configuration.waveDuration,
+      for (const flowState of state.flows) {
+        if (flowState.startedAt < 0) flowState.startedAt = timestamp;
+        flowState.progress = clamp(
+          (timestamp - flowState.startedAt)
+            / (owner.configuration.waveDuration / owner.configuration.flow.speed),
           0,
           1,
         );
-        if (state.waveProgress >= 1) state.waveStartedAt = null;
       }
+      state.flows = state.flows.filter((flowState) => flowState.progress < 1);
+      const latestFlow = state.flows[state.flows.length - 1];
+      state.waveProgress = latestFlow?.progress ?? 1;
+      state.waveStartedAt = latestFlow?.startedAt ?? null;
+      state.waveX = latestFlow?.x ?? state.waveX;
+      state.waveY = latestFlow?.y ?? state.waveY;
 
       const driftActive = owner.configuration.drift
         && activeElement === ownership.element
@@ -577,7 +910,7 @@ export function createKinetic({
         isAtRest(state)
         && !driftActive
         && state.impactStartedAt === null
-        && state.waveStartedAt === null
+        && state.flows.length === 0
       ) {
         current.x = target.x;
         current.y = target.y;
@@ -616,6 +949,7 @@ export function createKinetic({
   }
 
   function rest(ownership: ElementOwnership, immediate = false) {
+    clearFieldTimer(ownership);
     ownership.state.target = createRestValues();
     if (immediate) {
       ownership.state = createMotionState();
@@ -682,12 +1016,22 @@ export function createKinetic({
       y: owner.configuration.tilt ? y : 0,
     };
     scheduleMotion(ownership);
+    scheduleFieldSuppression(ownership);
   }
 
   function startWave(ownership: ElementOwnership) {
     if (!owner.configuration.wave || prefersReducedMotion()) return;
-    ownership.state.waveX = ownership.state.target.x;
-    ownership.state.waveY = ownership.state.target.y;
+    const nextFlow: MotionFlow = {
+      progress: 0,
+      startedAt: -1,
+      x: ownership.state.target.x,
+      y: ownership.state.target.y,
+    };
+    ownership.state.flows = owner.configuration.flow.multi
+      ? [...ownership.state.flows, nextFlow].slice(-owner.configuration.flow.maxWaves)
+      : [nextFlow];
+    ownership.state.waveX = nextFlow.x;
+    ownership.state.waveY = nextFlow.y;
     ownership.state.waveProgress = 0;
     ownership.state.waveStartedAt = -1;
     scheduleMotion(ownership);
@@ -760,7 +1104,10 @@ export function createKinetic({
     activeElement = null;
     for (const element of elements) {
       const ownership = ELEMENT_OWNERSHIP.get(element);
-      if (ownership?.activeOwner === owner) rest(ownership);
+      if (ownership?.activeOwner === owner) {
+        clearFieldTimer(ownership);
+        rest(ownership);
+      }
     }
   }
 
@@ -782,6 +1129,8 @@ export function createKinetic({
     cancelFrame();
     activeStates.clear();
     activeElement = null;
+    for (const timer of fieldTimers.values()) view?.clearTimeout(timer);
+    fieldTimers.clear();
     for (const timer of reducedImpactTimers.values()) view?.clearTimeout(timer);
     reducedImpactTimers.clear();
     for (const element of elements) {
@@ -809,6 +1158,7 @@ export function createKinetic({
 
     const ownership: ElementOwnership = {
       activeOwner: owner,
+      canvas: null,
       element,
       layer: null,
       owners: new Set([owner]),
@@ -823,8 +1173,10 @@ export function createKinetic({
     elements.add(element);
     element.classList.add(BASE_CLASS);
     element.setAttribute(KINETIC_ATTRIBUTE, "");
+    const decoration = createLayer(element);
+    ownership.canvas = decoration.canvas;
+    ownership.layer = decoration.layer;
     writeMotionState(ownership);
-    ownership.layer = createLayer(element);
     return true;
   }
 
@@ -846,6 +1198,7 @@ export function createKinetic({
 
     ownership.owners.delete(owner);
     activeStates.delete(ownership);
+    clearFieldTimer(ownership);
     const timer = reducedImpactTimers.get(ownership);
     if (timer !== undefined) {
       view?.clearTimeout(timer);
@@ -917,7 +1270,14 @@ export function createKinetic({
       throw new TypeError("DYNT Kinetic update options must be an object.");
     }
     for (const name of Object.keys(options)) {
-      if (name !== "effects" && name !== "limits" && name !== "motion") {
+      if (
+        name !== "cells"
+        && name !== "effects"
+        && name !== "field"
+        && name !== "flow"
+        && name !== "limits"
+        && name !== "motion"
+      ) {
         throw new TypeError(`DYNT Kinetic received an unknown update option: ${name}.`);
       }
     }
@@ -926,6 +1286,9 @@ export function createKinetic({
       options.effects,
       options.motion,
       options.limits,
+      options.cells,
+      options.field,
+      options.flow,
       owner.configuration,
     );
     stopMotion();
