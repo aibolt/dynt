@@ -1,0 +1,7 @@
+{
+  "name": "@dynt/kinetic",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Framework-independent kinetic response engine for interfaces."
+}
+

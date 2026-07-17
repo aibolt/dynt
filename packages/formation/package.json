@@ -1,0 +1,7 @@
+{
+  "name": "@dynt/formation",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Framework-independent, line-led UI formation engine."
+}
+
