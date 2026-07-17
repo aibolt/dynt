@@ -1,24 +1,90 @@
 # DYNT
 
-DYNT is a framework-agnostic interface engine for constructing UI formations and adding physical, kinetic responses to existing applications.
+DYNT adds constructed geometry and physical response to an existing interface from one application boundary. It enhances matching DOM elements without replacing them or requiring changes in every component.
 
-The project is being developed as two independent packages:
+The two engines are independent:
 
 - `@dynt/formation` — line-led construction, enclosure, reveal, and reversible deconstruction.
 - `@dynt/kinetic` — pointer pressure, tilt, drift, waves, impact, and content response.
 
-Applications will be able to install either package independently or combine both. The engines will operate on ordinary DOM elements, while small adapters will provide first-class integration for popular frameworks.
+Install either engine by itself, combine them through their DOM coordination contract, or use the thin React and Web Component integrations.
 
 ## Status
 
-DYNT is in foundation development and is being built incrementally around a stable public API.
+Version `0.5.0` is a public-preview candidate. Its package tarballs, type declarations, exports, plain-HTML examples, framework adapters, cleanup behavior, performance budgets, and Chromium/Firefox/WebKit matrix are verified locally and in CI. Registry publication remains a deliberate tagged release after the `@dynt` npm scope is configured.
 
-## Development order
+## Install
 
-1. Establish package boundaries and public contracts.
-2. Build one framework-independent Line Push formation for existing HTML.
-3. Add lifecycle, cleanup, dynamic-DOM observation, and accessibility behavior.
-4. Build the independent Kinetic engine.
-5. Add React and other framework adapters without coupling the engines to a framework.
+After the packages are published, install only what the application uses:
 
-See [the architecture](docs/ARCHITECTURE.md), [the implementation plan](docs/IMPLEMENTATION_PLAN.md), and [the roadmap](docs/ROADMAP.md).
+```bash
+npm install @dynt/formation
+npm install @dynt/kinetic
+```
+
+React and Web Component helpers are separate packages:
+
+```bash
+npm install @dynt/react
+npm install @dynt/web-components
+```
+
+## Plain HTML integration
+
+```ts
+import { createFormation } from "@dynt/formation";
+import "@dynt/formation/styles.css";
+
+const formation = createFormation({
+  root: document.querySelector("#app"),
+  selector: "section, article, button, [data-surface]",
+  observe: true,
+});
+```
+
+```ts
+import { createKinetic } from "@dynt/kinetic";
+import "@dynt/kinetic/styles.css";
+
+const kinetic = createKinetic({
+  root: document.querySelector("#app"),
+  selector: "section, article, button, [data-surface]",
+  observe: true,
+});
+```
+
+The root and selector are always explicit. Matching elements added later are adopted when `observe` is enabled. Add `data-dynt-ignore` to exclude a subtree. Call `destroy()` when the application boundary is removed to restore all application-owned DOM state.
+
+## Packages
+
+| Package | Purpose | Requires the other engine |
+| --- | --- | --- |
+| `@dynt/formation` | Line Push, Line Rise, lifecycle, profiles, and tokens | No |
+| `@dynt/kinetic` | Pressure, tilt, drift, local field, wave, impact, and content channels | No |
+| `@dynt/react` | Independent React hooks for either engine | No; engines are optional peers |
+| `@dynt/web-components` | Independent custom-element helpers for either engine | No; engines are optional peers |
+
+## Quality gates
+
+- 44 Formation unit, DOM, profile, lifecycle, shadow-root, and performance checks.
+- 21 Kinetic unit, DOM, input, effects, shadow-root, and performance checks.
+- 6 adapter checks across React and Web Components.
+- 2 composition checks covering initialization and cleanup order.
+- 22 passing browser checks plus two intentional visual-test skips across Chromium, Firefox, and WebKit.
+- Clean tarball installation and import verification for all four public packages.
+- High-severity dependency audit and reproducible release workflow.
+
+Run the full local verification:
+
+```bash
+npm test
+npm run test:browser
+npm run test:packages
+npm audit --audit-level=high
+```
+
+See the [API reference](docs/API.md), [accessibility contract](docs/ACCESSIBILITY.md), [combined-operation guide](docs/COMPOSITION.md), [performance budgets](docs/PERFORMANCE.md), [troubleshooting guide](docs/TROUBLESHOOTING.md), [architecture](docs/ARCHITECTURE.md), and [roadmap](docs/ROADMAP.md). Maintainers can use the [release and rollback guide](docs/RELEASING.md); vulnerabilities follow the [security policy](SECURITY.md).
+
+## License
+
+DYNT is available under the [MIT License](LICENSE). Contributions follow [the project contribution policy](CONTRIBUTING.md).

@@ -1,0 +1,41 @@
+name: Feature request
+description: Propose a focused capability or integration.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Formation
+        - Kinetic
+        - Composition
+        - React
+        - Web Components
+        - Another framework
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Explain the user need without prescribing a large implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest public behavior that would solve the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Package-boundary and compatibility impact
+      description: Explain independence, cleanup, accessibility, reduced-motion, performance, and migration implications.
+    validations:
+      required: true

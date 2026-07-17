@@ -1,0 +1,67 @@
+{
+  "name": "@dynt/react",
+  "version": "0.5.0",
+  "description": "Thin React lifecycle adapters for DYNT engines.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aibolt/dynt.git",
+    "directory": "packages/react"
+  },
+  "homepage": "https://github.com/aibolt/dynt#readme",
+  "bugs": "https://github.com/aibolt/dynt/issues",
+  "keywords": [
+    "animation",
+    "react",
+    "ui"
+  ],
+  "type": "module",
+  "exports": {
+    "./formation": {
+      "types": "./dist/formation.d.ts",
+      "import": "./dist/formation.js"
+    },
+    "./kinetic": {
+      "types": "./dist/kinetic.d.ts",
+      "import": "./dist/kinetic.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "peerDependencies": {
+    "@dynt/formation": "^0.5.0",
+    "@dynt/kinetic": "^0.5.0",
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "@dynt/formation": {
+      "optional": true
+    },
+    "@dynt/kinetic": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@dynt/formation": "0.5.0",
+    "@dynt/kinetic": "0.5.0",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "happy-dom": "20.10.6",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

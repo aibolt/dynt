@@ -1,7 +1,52 @@
 {
   "name": "@dynt/kinetic",
-  "version": "0.0.0",
-  "private": true,
-  "description": "Framework-independent kinetic response engine for interfaces."
+  "version": "0.5.0",
+  "description": "Framework-independent kinetic response engine for interfaces.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aibolt/dynt.git",
+    "directory": "packages/kinetic"
+  },
+  "homepage": "https://github.com/aibolt/dynt#readme",
+  "bugs": "https://github.com/aibolt/dynt/issues",
+  "keywords": [
+    "animation",
+    "dom",
+    "interaction",
+    "physics",
+    "ui"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": "./src/styles.css"
+  },
+  "files": [
+    "dist",
+    "src/styles.css",
+    "LICENSE"
+  ],
+  "sideEffects": [
+    "./src/styles.css"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "happy-dom": "20.10.6",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }
-

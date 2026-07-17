@@ -26,7 +26,7 @@ DYNT is ready for a stable release when all of the following are true:
 - Nested surfaces keep effects local to the nearest owning surface.
 - Idle pages perform no continuous animation work.
 - Public APIs, examples, package exports, and release procedures are documented and tested.
-- Every protected-branch change receives manual owner review.
+- Every outside contribution receives manual owner review; maintainer-authored work passes the same automated gates and may be owner-approved.
 
 ## 3. User integration model
 
@@ -61,7 +61,7 @@ const kinetic = createKinetic({
 });
 ```
 
-These examples describe the intended public shape. Each option will become public only after implementation and contract testing.
+These examples use the implemented public shape. Each option is covered by contract tests.
 
 ### 3.2 Framework applications
 
@@ -391,7 +391,7 @@ Every implementation pull request must pass:
 
 ### 13.2 Package publishing
 
-Packages remain private until the license, package names, exports, and preview criteria are approved.
+Package manifests become publishable only after the license, names, exports, and preview criteria are approved. Registry publication still requires owner access to the npm scope.
 
 Publishing will include:
 
@@ -548,36 +548,34 @@ Deliverables:
 
 Gate: every success criterion in this plan is verified with recorded evidence.
 
-## 16. Immediate implementation queue
+## 16. Completed implementation queue
 
 Work should continue in this order:
 
-1. Add `observe` support to Formation with one batched `MutationObserver` per controller.
-2. Add `exclude` handling and tests for excluded subtrees.
-3. Reconcile removed elements and restore Formation-owned state.
-4. Add repeated-initialization and nested-root ownership tests.
-5. Define the Formation phase type and transition table.
-6. Implement reverse Line Push deconstruction.
-7. Add reduced-motion lifecycle tests.
-8. Add browser verification for buttons, links, sections, and form controls.
-9. Add continuous integration for build, test, and audit.
-10. Review Phase 1 evidence before adding any new profile or starting Kinetic.
+1. [x] Add `observe` support to Formation with one batched `MutationObserver` per controller.
+2. [x] Add `exclude` handling and tests for excluded subtrees.
+3. [x] Reconcile removed elements and restore Formation-owned state.
+4. [x] Add repeated-initialization and nested-root ownership tests.
+5. [x] Define the Formation phase type and transition table.
+6. [x] Implement reverse Line Push deconstruction.
+7. [x] Add reduced-motion lifecycle tests.
+8. [x] Add browser verification for buttons, links, sections, and form controls.
+9. [x] Add continuous integration for build, test, audit, package, and browser gates.
+10. [x] Review Phase 1 evidence before adding another profile and Kinetic.
 
-Only one queue item should be implemented and reviewed at a time unless two items are inseparable for correctness.
+## 17. Release decisions
 
-## 17. Decisions requiring owner approval
+Recorded decisions:
 
-These decisions must be recorded before their related release gate:
+- Public license: MIT.
+- Package names: `@dynt/formation`, `@dynt/kinetic`, `@dynt/react`, and `@dynt/web-components`.
+- Browser policy: current evergreen Chromium, Firefox, and WebKit engines, verified through the pinned Playwright matrix.
+- Public preview performance budget: 500-target DOM operations complete within 1000 milliseconds in the test environment; Kinetic defaults to 250 managed and 24 active surfaces.
+- Framework delivery: React and Web Components are included; additional adapters require demonstrated demand.
+- Security reporting: private GitHub security advisories.
+- Release procedure: synchronized `0.5.0` preview packages, tagged automation, clean-package verification, provenance, and immutable-version rollback.
 
-- Public license.
-- Final npm package names and organization access.
-- Supported browser versions.
-- Public preview performance budgets.
-- First framework adapter after React.
-- Security contact or private vulnerability-reporting process.
-- Versioning and release-approval procedure.
-
-These decisions do not block the immediate Formation queue unless a task directly depends on them.
+Owner access to the `@dynt` npm organization and the trusted-publisher configuration remain external release operations.
 
 ## 18. Definition of done
 
@@ -591,4 +589,3 @@ A task is complete only when:
 - Agent assistance is disclosed when material.
 - No unrelated changes are included.
 - A required owner approves the pull request.
-
