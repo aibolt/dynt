@@ -23,11 +23,17 @@ type ElementSnapshot = {
   formationAttribute: string | null;
 };
 
+type ElementOwnership = {
+  owners: Set<object>;
+  snapshot: ElementSnapshot;
+};
+
 const BASE_CLASS = "dynt-formation";
 const DEFAULT_EXCLUDE_SELECTOR = "[data-dynt-ignore]";
 const PROFILE_CLASSES: Record<FormationProfile, string> = {
   "line-push": "dynt-formation--line-push",
 };
+const ELEMENT_OWNERSHIP = new WeakMap<HTMLElement, ElementOwnership>();
 
 function validateSelector(root: FormationRoot, selector: string, label: string) {
   try {
@@ -89,7 +95,8 @@ export function createFormation({
     : DEFAULT_EXCLUDE_SELECTOR;
   validateSelector(root, selector, "target");
   validateSelector(root, excludeSelector, "exclude");
-  const snapshots = new Map<HTMLElement, ElementSnapshot>();
+  const elements = new Set<HTMLElement>();
+  const owner = {};
   const document = root.nodeType === 9 ? root as Document : root.ownerDocument;
   const view = document?.defaultView;
   const observerOptions: MutationObserverInit = {
@@ -102,13 +109,25 @@ export function createFormation({
   let observer: MutationObserver | null = null;
 
   function enhance(element: HTMLElement) {
-    if (snapshots.has(element)) return false;
+    if (elements.has(element)) return false;
 
-    snapshots.set(element, {
+    const existingOwnership = ELEMENT_OWNERSHIP.get(element);
+    if (existingOwnership) {
+      existingOwnership.owners.add(owner);
+      elements.add(element);
+      return true;
+    }
+
+    const snapshot = {
       hadBaseClass: element.classList.contains(BASE_CLASS),
       hadProfileClass: element.classList.contains(profileClass),
       formationAttribute: element.getAttribute("data-dynt-formation"),
+    };
+    ELEMENT_OWNERSHIP.set(element, {
+      owners: new Set([owner]),
+      snapshot,
     });
+    elements.add(element);
 
     element.classList.add(BASE_CLASS, profileClass);
     element.setAttribute("data-dynt-formation", profile);
@@ -126,6 +145,19 @@ export function createFormation({
     }
   }
 
+  function release(element: HTMLElement) {
+    if (!elements.delete(element)) return;
+
+    const ownership = ELEMENT_OWNERSHIP.get(element);
+    if (!ownership) return;
+
+    ownership.owners.delete(owner);
+    if (ownership.owners.size > 0) return;
+
+    restore(element, ownership.snapshot);
+    ELEMENT_OWNERSHIP.delete(element);
+  }
+
   function refresh() {
     if (destroyed) return 0;
 
@@ -137,10 +169,9 @@ export function createFormation({
       const targets = findTargets(root, selector, excludeSelector);
       const targetSet = new Set(targets);
 
-      for (const [element, snapshot] of snapshots) {
+      for (const element of elements) {
         if (targetSet.has(element)) continue;
-        restore(element, snapshot);
-        snapshots.delete(element);
+        release(element);
       }
 
       for (const element of targets) {
@@ -177,11 +208,9 @@ export function createFormation({
     observer?.disconnect();
     observer = null;
 
-    for (const [element, snapshot] of snapshots) {
-      restore(element, snapshot);
+    for (const element of Array.from(elements)) {
+      release(element);
     }
-
-    snapshots.clear();
   }
 
   refresh();
@@ -198,7 +227,7 @@ export function createFormation({
 
   return {
     get elements() {
-      return Array.from(snapshots.keys());
+      return Array.from(elements);
     },
     profile,
     refresh,

@@ -17,6 +17,7 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 - [x] Support existing and dynamically inserted elements.
 - [x] Respect ignored subtrees and custom exclusion selectors.
 - [x] Reconcile and restore elements that leave the managed target set.
+- [x] Keep repeated and nested controller ownership idempotent.
 - [x] Return a controller with refresh and destroy operations.
 - [ ] Preserve original element semantics and focus behavior.
 - [ ] Verify construction and reverse deconstruction.
