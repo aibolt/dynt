@@ -21,11 +21,9 @@ It must run without `@dynt/kinetic`.
 
 Owns physical response:
 
-- pointer pressure
 - tilt and drift
-- bounded canvas pressure lens
 - square, connected hexagon, circle, and interlocked diamond geometry
-- directional turbulent wave flow
+- click- and impact-driven circular turbulent wave flow
 - local impact
 - content coupling
 
@@ -37,7 +35,7 @@ Both engines use the browser DOM as their shared platform contract. A developer 
 
 Framework adapters only manage mounting and cleanup. They do not duplicate formation or kinetic behavior.
 
-Formation can own one accessibility-hidden fixed viewport layer for transient flow lines and draws four complete permanent rails with host pseudo-elements. The controller measures targets, stages their viewport flights, reverses that sequence for withdrawal, and removes each flight after it crosses the target; application elements need no child markup. Kinetic owns one accessibility-hidden canvas layer on compatible surfaces. On shared formed surfaces, the rails and canvas use the same bounded plate transform while four engine-owned corner extensions reproduce near-corner compression and far-corner expansion. Bounded semantic reactors consume optional content drift and distance-timed wave motion without taking ownership of the host transform or leaking into nested managed surfaces.
+Formation can own one accessibility-hidden fixed viewport layer for transient flow lines, draw four complete permanent rails with host pseudo-elements, or own one responsive SVG perimeter for Arc Trace. The controller stages and reverses geometry through one lifecycle; application elements are never replaced. Kinetic owns one accessibility-hidden canvas layer on compatible surfaces. Pointer movement changes the bounded plate tilt without drawing cells. Clicks and impacts create circular, turbulence-distorted cell fronts. On shared formed surfaces, Formation geometry and the Kinetic canvas use the same plate transform while Line Forge corner extensions reproduce near-corner compression and far-corner expansion. Bounded semantic reactors consume optional content drift and distance-timed wave motion without taking ownership of the host transform or leaking into nested managed surfaces.
 
 ## Rules
 

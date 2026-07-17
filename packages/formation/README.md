@@ -6,7 +6,7 @@ Framework-independent, line-led construction and reversible formation lifecycle.
 npm install @dynt/formation
 ```
 
-Formation applies viewport-spanning flow lines and four-rail Line Forge construction through one root-level initializer. Line Push and Line Rise select different construction directions without changing the integration contract.
+Formation applies viewport-spanning flow lines, four-rail Line Forge construction, and single-stroke perimeter formation through one root-level initializer. Line Push, Line Rise, and Arc Trace select different geometry without changing the integration contract.
 
 ```ts
 import { createFormation } from "@dynt/formation";
@@ -59,18 +59,21 @@ Repeated and nested controllers share one internal ownership record per element.
 
 ## Profiles
 
-Formation includes two independent Line Forge profiles. Both produce four complete rails, optional corner overflow, enclosure, fill/reveal, and reversible deconstruction:
+Formation includes three independent profiles:
 
 - `line-push` constructs horizontal edges before vertical edges.
 - `line-rise` constructs vertical edges before horizontal edges.
+- `arc-trace` draws one continuous rounded perimeter, leaves paired registers on opposite edges, and erases along the same path during withdrawal.
 
-The typed `createFormationProfileRegistry()` API accepts additional profile definitions without changing the engine. A definition declares its scoped CSS class, edge geometry, supported tokens, transition completion hooks, rendering strategy, and reduced-motion and responsive capabilities. Pass the returned registry through `profiles` and select its profile by name.
+Line Push and Line Rise support optional viewport travel and corner overflow. Arc Trace owns an accessibility-hidden SVG perimeter, supports the `radius` token, and deliberately rejects viewport travel and overflow because neither belongs to its geometry.
+
+The typed `createFormationProfileRegistry()` API accepts additional profile definitions without changing the engine. A definition declares its scoped CSS class, edge or perimeter geometry, supported tokens, transition completion hooks, rendering strategy, and reduced-motion and responsive capabilities. Pass the returned registry through `profiles` and select its profile by name.
 
 Two controllers may share a target only when they use the same profile definition. Formation rejects conflicting profiles before changing that target.
 
 ## Configuration layers
 
-Formation applies configuration in this order: profile CSS defaults, controller `tokens`, matching `groups` in array order, and local data attributes. Supported local overrides are `data-dynt-formation-duration`, `data-dynt-formation-easing`, `data-dynt-fill-color`, `data-dynt-line-color`, `data-dynt-line-style`, `data-dynt-line-width`, and `data-dynt-formation-overflow`. `update()` replaces supplied controller or group layers and reapplies them without replacing the managed elements.
+Formation applies configuration in this order: profile CSS defaults, controller `tokens`, matching `groups` in array order, and local data attributes. Supported local overrides are `data-dynt-formation-duration`, `data-dynt-formation-easing`, `data-dynt-fill-color`, `data-dynt-line-color`, `data-dynt-line-style`, `data-dynt-line-width`, `data-dynt-formation-overflow`, and `data-dynt-formation-radius`. `update()` replaces supplied controller or group layers and reapplies them without replacing the managed elements.
 
 Duration and overflow are expressed in milliseconds and pixels respectively. Colors, width, and easing accept non-empty CSS values. Line style accepts `solid`, `dashed`, `dotted`, or `double`. Destroying a controller restores the exact inline custom-property values and priorities that existed before Formation managed the target.
 

@@ -4,8 +4,8 @@ DYNT adds constructed geometry and physical response to an existing interface fr
 
 The two engines are independent:
 
-- `@dynt/formation` — four-rail Line Forge construction, enclosure, reveal, and reversible deconstruction.
-- `@dynt/kinetic` — cell geometry, local pressure, directional wave flow, tilt, drift, and content response.
+- `@dynt/formation` — four-rail Line Forge and single-stroke perimeter construction with reversible deconstruction.
+- `@dynt/kinetic` — corner-coupled tilt, circular turbulent cell waves, drift, impact, and content response.
 
 Install either engine by itself, combine them through their DOM coordination contract, or use the thin React and Web Component integrations.
 
@@ -61,8 +61,8 @@ The root and selector are always explicit. Matching elements added later are ado
 
 | Package | Purpose | Requires the other engine |
 | --- | --- | --- |
-| `@dynt/formation` | Viewport flow lines, Line Forge rails, Line Push, Line Rise, lifecycle, profiles, and tokens | No |
-| `@dynt/kinetic` | Cell geometry, pressure lens, directional flow, tilt, drift, impact, and content channels | No |
+| `@dynt/formation` | Viewport flow lines, Line Forge rails, Arc Trace, lifecycle, profiles, and tokens | No |
+| `@dynt/kinetic` | Cell geometry, circular turbulent waves, tilt, drift, impact, and content channels | No |
 | `@dynt/react` | Independent React hooks for either engine | No; engines are optional peers |
 | `@dynt/web-components` | Independent custom-element helpers for either engine | No; engines are optional peers |
 

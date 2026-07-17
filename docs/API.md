@@ -19,14 +19,14 @@ import "@dynt/formation/styles.css";
 | `root` | `Document \| DocumentFragment \| HTMLElement` | Required | Explicit enhancement boundary. Pass a `ShadowRoot` directly to manage that shadow tree. |
 | `selector` | `string` | Required | Targets inside the root, including the root itself when it matches. |
 | `exclude` | `string` | None | Additional subtree exclusion selector. `[data-dynt-ignore]` is always excluded. |
-| `profile` | `"line-push" \| "line-rise" \| custom name` | `"line-push"` | Formation profile. |
+| `profile` | `"line-push" \| "arc-trace" \| "line-rise" \| custom name` | `"line-push"` | Formation profile. |
 | `profiles` | `FormationProfileRegistry` | Built-in registry | Registry used to resolve `profile`. |
 | `observe` | `boolean` | `false` | Reconcile matching DOM additions, removals, and relevant attribute changes. |
 | `viewportFlow` | `boolean \| FormationViewportFlow` | `false` | Send transient lines from the viewport boundaries before staging target rail construction. |
 | `tokens` | `FormationTokens` | Profile CSS defaults | Controller-level token layer. |
 | `groups` | `FormationSelectorGroup[]` | `[]` | Ordered selector-specific token layers. |
 
-`FormationTokens` accepts `duration`, `easing`, `fillColor`, `lineColor`, `lineStyle`, `lineWidth`, and `overflow`. Line style is `solid`, `dashed`, `dotted`, or `double`; overflow is `0` to `64` pixels. Equivalent local attributes are `data-dynt-formation-duration`, `data-dynt-formation-easing`, `data-dynt-fill-color`, `data-dynt-line-color`, `data-dynt-line-style`, `data-dynt-line-width`, and `data-dynt-formation-overflow`.
+`FormationTokens` accepts `duration`, `easing`, `fillColor`, `lineColor`, `lineStyle`, `lineWidth`, `overflow`, and `radius`. Line style is `solid`, `dashed`, `dotted`, or `double`; overflow is `0` to `64` pixels. Equivalent local attributes are `data-dynt-formation-duration`, `data-dynt-formation-easing`, `data-dynt-fill-color`, `data-dynt-line-color`, `data-dynt-line-style`, `data-dynt-line-width`, `data-dynt-formation-overflow`, and `data-dynt-formation-radius`. Each profile accepts only the tokens appropriate to its geometry.
 
 Configuration precedence is profile CSS, controller tokens, matching groups in array order, then local data attributes.
 
@@ -50,9 +50,10 @@ Phases are `unformed`, `locating`, `constructing`, `enclosed`, `revealing`, `for
 ### Built-in profiles
 
 - `line-push` forges horizontal rails before vertical rails.
+- `arc-trace` draws one continuous rounded perimeter and leaves paired entry/exit registers on opposite edges.
 - `line-rise` forges vertical rails before horizontal rails.
 
-Both built-ins use four complete Line Forge rails, optional corner overflow, enclosure fill, content reveal, coordinated Kinetic plate tilt, and reversible deconstruction.
+Line Push and Line Rise use four complete Line Forge rails with optional viewport travel and corner overflow. Arc Trace uses an engine-owned SVG perimeter with a `620ms` default trace, a proportionally shorter reverse, an `18px` default radius, no viewport travel, and no overflow. All three use the same lifecycle, coordinated Kinetic plate tilt, and reversible cleanup contract.
 
 `createFormationProfileRegistry(definitions)` creates an immutable, typed registry. Each definition declares a unique name, a `dynt-formation--` class, edge order, supported tokens, transition completion hooks, rendering mode, and capability metadata. A custom profile supplies its own scoped CSS for that class.
 
@@ -73,12 +74,11 @@ import "@dynt/kinetic/styles.css";
 | `observe` | `boolean` | `false` | Reconcile dynamic matches. |
 | `cells` | `KineticCells` | See below | Geometry tree and color source. |
 | `effects` | `KineticEffects` | See below | Independent effect switches. |
-| `field` | `KineticField` | See below | Local pressure-lens behavior and budget. |
-| `flow` | `KineticFlow` | See below | Directional wave behavior and budget. |
+| `flow` | `KineticFlow` | See below | Circular turbulent wave behavior and budget. |
 | `motion` | `KineticMotion` | See below | Bounded motion settings. |
 | `limits` | `KineticLimits` | See below | Rendering budgets. |
 
-Effect defaults are `pressure: true`, `tilt: true`, `content: false`, `drift: false`, and `wave: false`.
+Effect defaults are `tilt: true`, `content: false`, `drift: false`, and `wave: false`.
 
 | Motion option | Default | Valid range |
 | --- | --- | --- |
@@ -93,9 +93,7 @@ Effect defaults are `pressure: true`, `tilt: true`, `content: false`, `drift: fa
 
 `cells.shape` accepts `square`, `hexagon`, `circle`, or `diamond`. `cells.size` accepts `8` to `120` pixels or a three-level size tree; the default is `[40, 32, 24]`. `cells.colorMode` accepts `single`, `bands`, or `gradient`, with one to eight values in `cells.colors`. Gap is `0` to `8` pixels and is automatically removed for connected hexagon and diamond lattices.
 
-The pressure lens defaults to a three-cell radius, `120ms` stillness hold, `61` cells, `1.55` tail, `0.18` stable noise, and `1` intensity. Field limits are validated before any DOM mutation.
-
-Directional flow exposes `speed`, `thickness`, `recovery`, `intensity`, `turbulence`, `turbulenceScale`, `growth`, `overflow`, `seed`, `seedLocked`, `multi`, `maxWaves`, and `maxCells`. Defaults use a 14-pixel terminal overflow and 420-cell budget. `kineticPresets.structural` and `kineticPresets.locator` provide immutable starting configurations.
+The canvas stays clear during pointer movement. Clicks and `impact()` start a circular front whose distance timing is distorted by coherent turbulence. Wave flow exposes `speed`, `thickness`, `recovery`, `intensity`, `turbulence`, `turbulenceScale`, `growth`, `overflow`, `seed`, `seedLocked`, `multi`, `maxWaves`, and `maxCells`. Defaults use a size- and travel-aware 14-pixel terminal-overflow ceiling and a 420-cell budget. `kineticPresets.structural` and `kineticPresets.locator` provide immutable starting configurations.
 
 ### Kinetic controller
 
@@ -106,15 +104,15 @@ Directional flow exposes `speed`, `thickness`, `recovery`, `intensity`, `turbule
 | `pause()` | Stop input, cancel scheduled work, and return surfaces to rest. |
 | `resume()` | Resume input without rebuilding surfaces. |
 | `impact(target, input?)` | Trigger one bounded response on the active managed owner. |
-| `update({ cells?, effects?, field?, flow?, motion?, limits? })` | Merge supplied settings into current configuration, rest surfaces, and reconcile limits. |
+| `update({ cells?, effects?, flow?, motion?, limits? })` | Merge supplied settings into current configuration, rest surfaces, and reconcile limits. |
 | `refresh()` | Reconcile current matches and return the number newly enhanced. |
 | `destroy()` | Remove owned listeners, observers, frames, timers, layers, markers, and styles. Idempotent. |
 
-Impact input accepts `pressure` from `0` to `1` and normalized `x` and `y` coordinates from `-1` to `1`.
+Impact input accepts `pressure` from `0` to `1` as wave-strength input and normalized `x` and `y` coordinates from `-1` to `1` as the impact origin.
 
 ### CSS channels
 
-Kinetic writes these engine-owned custom properties on a managed host: `--dynt-pressure`, `--dynt-pointer-x`, `--dynt-pointer-y`, `--dynt-tilt-x`, `--dynt-tilt-y`, `--dynt-shadow-x`, `--dynt-shadow-y`, `--dynt-tl-overflow`, `--dynt-tr-overflow`, `--dynt-bl-overflow`, `--dynt-br-overflow`, `--dynt-drift-x`, `--dynt-drift-y`, `--dynt-content-x`, `--dynt-content-y`, `--dynt-wave-x`, `--dynt-wave-y`, `--dynt-wave-scale`, and `--dynt-wave-opacity`.
+Kinetic writes these engine-owned custom properties on a managed host: `--dynt-pointer-x`, `--dynt-pointer-y`, `--dynt-tilt-x`, `--dynt-tilt-y`, `--dynt-shadow-x`, `--dynt-shadow-y`, `--dynt-tl-overflow`, `--dynt-tr-overflow`, `--dynt-bl-overflow`, `--dynt-br-overflow`, `--dynt-drift-x`, `--dynt-drift-y`, `--dynt-content-x`, `--dynt-content-y`, `--dynt-wave-x`, `--dynt-wave-y`, `--dynt-wave-scale`, and `--dynt-wave-opacity`.
 
 Applications can set `--dynt-cell-size` and `--dynt-kinetic-color`, or use `data-dynt-cell-shape` and `data-dynt-cell-size` for target-local geometry. Tilt moves the engine-owned cell plate and any shared Formation rails together, with differential corner overflow and an opposing shadow. When `effects.content` is enabled, Kinetic also identifies up to 48 semantic content groups per surface and moves them through the individual CSS `translate` property. The host transform and nested managed surfaces stay untouched. Mark a custom group with `data-dynt-reactor` when its markup has no semantic candidate. A wave applies a distance-timed lift, rebound, and settle sequence to the same locally owned reactors.
 
