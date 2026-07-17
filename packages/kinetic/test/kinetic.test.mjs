@@ -390,7 +390,7 @@ test("delegated pointer input writes bounded pressure and tilt then becomes idle
   assert.equal(button.style.getPropertyValue("--dynt-pointer-y"), "50.00%");
   assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.2929");
   assert.equal(button.style.getPropertyValue("--dynt-tilt-x"), "0.000deg");
-  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "8.000deg");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "1.350deg");
   assert.equal(frames.count, 0);
 
   dispatchPointer(window, button, "pointermove", {
@@ -410,7 +410,42 @@ test("delegated pointer input writes bounded pressure and tilt then becomes idle
   controller.destroy();
 });
 
-test("tilt moves semantic content while keeping the surface decoration fixed", () => {
+test("corner tilt compresses the near overflow and raises the far edge", () => {
+  const window = new Window();
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = "<main><button style='--dynt-formation-overflow: 14px'>Button</button></main>";
+  const main = document.querySelector("main");
+  const button = document.querySelector("button");
+  setRectangle(button);
+  const controller = createKinetic({
+    root: main,
+    selector: "button",
+    motion: { response: 1 },
+  });
+
+  dispatchPointer(window, button, "pointermove", { clientX: 0, clientY: 0 });
+  frames.runNext();
+
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-x"), "1.350deg");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "-1.350deg");
+  assert.equal(button.style.getPropertyValue("--dynt-shadow-x"), "18.000px");
+  assert.equal(button.style.getPropertyValue("--dynt-shadow-y"), "22.000px");
+  assert.equal(button.style.getPropertyValue("--dynt-tl-overflow"), "6.300px");
+  assert.equal(button.style.getPropertyValue("--dynt-tr-overflow"), "17.189px");
+  assert.equal(button.style.getPropertyValue("--dynt-bl-overflow"), "17.189px");
+  assert.equal(button.style.getPropertyValue("--dynt-br-overflow"), "21.700px");
+
+  dispatchPointer(window, main, "pointerleave");
+  frames.runNext();
+  assert.equal(button.style.getPropertyValue("--dynt-tl-overflow"), "14.000px");
+  assert.equal(button.style.getPropertyValue("--dynt-tr-overflow"), "14.000px");
+  assert.equal(button.style.getPropertyValue("--dynt-bl-overflow"), "14.000px");
+  assert.equal(button.style.getPropertyValue("--dynt-br-overflow"), "14.000px");
+  controller.destroy();
+});
+
+test("tilt moves semantic content inside the engine-owned plate", () => {
   const window = new Window();
   const frames = installAnimationFrames(window);
   const document = window.document;
@@ -446,8 +481,9 @@ test("tilt moves semantic content while keeping the surface decoration fixed", (
   assert.notEqual(heading.style.getPropertyValue("--dynt-reactor-x"), "0.000px");
   assert.notEqual(heading.style.getPropertyValue("--dynt-reactor-y"), "0.000px");
   assert.equal(
-    article.querySelector("[data-dynt-kinetic-layer]").style.getPropertyValue("transform"),
-    "",
+    article.querySelector(":scope > [data-dynt-kinetic-layer]")
+      .querySelectorAll("[data-dynt-kinetic-corner]").length,
+    4,
   );
 
   controller.destroy();
@@ -476,7 +512,7 @@ test("nearest nested surface owns delegated pointer input", () => {
   dispatchPointer(window, button, "pointermove", { clientX: 100 });
   frames.runNext();
 
-  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "8.000deg");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "1.350deg");
   assert.equal(main.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
   controller.destroy();
 });
@@ -600,7 +636,7 @@ test("damped motion stops scheduling after reaching rest", () => {
 
   assert.equal(frames.count, 0);
   assert.equal(frameCount < 30, true);
-  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "8.000deg");
+  assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "1.350deg");
   controller.destroy();
 });
 
@@ -749,8 +785,8 @@ test("impact produces one bounded rebound and content response channel", () => {
   assert.equal(frames.count, 1);
   frames.runNext();
   assert.equal(Number(inside.style.getPropertyValue("--dynt-pressure")) > 0, true);
-  assert.equal(inside.style.getPropertyValue("--dynt-content-x"), "1.500px");
-  assert.equal(inside.style.getPropertyValue("--dynt-content-y"), "-1.500px");
+  assert.equal(inside.style.getPropertyValue("--dynt-content-x"), "0.750px");
+  assert.equal(inside.style.getPropertyValue("--dynt-content-y"), "-0.750px");
 
   let frameCount = 0;
   while (frames.count > 0 && frameCount < 40) {
@@ -797,6 +833,7 @@ test("destroy restores application motion properties exactly", () => {
   document.body.innerHTML = "<main><button>Button</button></main>";
   const button = document.querySelector("button");
   button.style.setProperty("--dynt-pressure", "0.4", "important");
+  button.style.setProperty("--dynt-tl-overflow", "7px", "important");
   const controller = createKinetic({
     root: document.querySelector("main"),
     selector: "button",
@@ -806,6 +843,8 @@ test("destroy restores application motion properties exactly", () => {
 
   assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.4");
   assert.equal(button.style.getPropertyPriority("--dynt-pressure"), "important");
+  assert.equal(button.style.getPropertyValue("--dynt-tl-overflow"), "7px");
+  assert.equal(button.style.getPropertyPriority("--dynt-tl-overflow"), "important");
   assert.equal(button.style.getPropertyValue("--dynt-tilt-x"), "");
 });
 

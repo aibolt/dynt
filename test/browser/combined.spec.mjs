@@ -17,16 +17,19 @@ test("combined mode suppresses Kinetic until Formation is formed", async ({ page
     Math.abs(Number.parseFloat(element.style.getPropertyValue("--dynt-tilt-y")))
   ))).toBeGreaterThan(0);
   const motionOwnership = await section.evaluate((element) => ({
+    bottomRight: Number.parseFloat(element.style.getPropertyValue("--dynt-br-overflow")),
     field: getComputedStyle(element.querySelector("[data-dynt-kinetic-layer]")).transform,
     horizontalRails: getComputedStyle(element, "::before").transform,
+    topLeft: Number.parseFloat(element.style.getPropertyValue("--dynt-tl-overflow")),
     reactorX: Number.parseFloat(
       element.querySelector(".dynt-kinetic__reactor").style.getPropertyValue("--dynt-reactor-x"),
     ),
     verticalRails: getComputedStyle(element, "::after").transform,
   }));
-  expect(motionOwnership.horizontalRails).toBe("none");
-  expect(motionOwnership.verticalRails).toBe("none");
-  expect(motionOwnership.field).toBe("none");
+  expect(motionOwnership.horizontalRails).not.toBe("none");
+  expect(motionOwnership.verticalRails).toBe(motionOwnership.horizontalRails);
+  expect(motionOwnership.field).toBe(motionOwnership.horizontalRails);
+  expect(motionOwnership.topLeft).toBeGreaterThan(motionOwnership.bottomRight);
   expect(Math.abs(motionOwnership.reactorX)).toBeGreaterThan(0);
 
   await page.getByRole("button", { name: "Withdraw" }).click();

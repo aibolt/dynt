@@ -51,9 +51,9 @@ export const kineticPresets = Object.freeze({
     }),
     motion: Object.freeze({
       contentLift: 12,
-      contentTravel: 10,
+      contentTravel: 3,
       drift: 1.5,
-      maxTilt: 8,
+      maxTilt: 1.35,
       response: 0.18,
       waveDuration: 640,
     }),
@@ -94,8 +94,8 @@ export const kineticPresets = Object.freeze({
     }),
     motion: Object.freeze({
       contentLift: 10,
-      contentTravel: 8,
-      maxTilt: 6,
+      contentTravel: 3,
+      maxTilt: 1.35,
       response: 0.2,
       waveDuration: 560,
     }),

@@ -7,8 +7,14 @@
   --dynt-pointer-x: 50%;
   --dynt-pointer-y: 50%;
   --dynt-pressure: 0;
+  --dynt-shadow-x: 0px;
+  --dynt-shadow-y: 12px;
+  --dynt-tl-overflow: var(--dynt-formation-overflow, 14px);
   --dynt-tilt-x: 0deg;
   --dynt-tilt-y: 0deg;
+  --dynt-tr-overflow: var(--dynt-formation-overflow, 14px);
+  --dynt-bl-overflow: var(--dynt-formation-overflow, 14px);
+  --dynt-br-overflow: var(--dynt-formation-overflow, 14px);
   --dynt-wave-opacity: 0;
   --dynt-wave-scale: 0.25;
   --dynt-wave-x: 50%;
@@ -19,11 +25,22 @@
 
 :where(.dynt-kinetic__layer) {
   border-radius: inherit;
+  box-shadow:
+    var(--dynt-shadow-x) var(--dynt-shadow-y) 32px rgb(2 8 23 / 0.28),
+    var(--dynt-shadow-x) var(--dynt-shadow-y) 68px rgb(34 211 238 / 0.08);
   inset: 0;
   overflow: visible;
   pointer-events: none;
   position: absolute;
+  transform: perspective(1100px) rotateX(var(--dynt-tilt-x)) rotateY(var(--dynt-tilt-y)) translateZ(0);
+  transform-origin: center;
+  transform-style: preserve-3d;
+  will-change: transform, box-shadow;
   z-index: 0;
+}
+
+:where(.dynt-kinetic__corner) {
+  display: none;
 }
 
 :where(.dynt-kinetic__reactor) {
@@ -40,6 +57,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  :where(.dynt-kinetic__layer) {
+    transform: none;
+  }
+
   :where(.dynt-kinetic__reactor) {
     translate: none;
   }

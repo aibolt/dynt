@@ -133,6 +133,96 @@
   z-index: 1;
 }
 
+:where(.dynt-formation.dynt-kinetic)::before,
+:where(.dynt-formation.dynt-kinetic)::after {
+  transform: perspective(1100px) rotateX(var(--dynt-tilt-x)) rotateY(var(--dynt-tilt-y)) translateZ(0);
+  transform-origin: center;
+  transform-style: preserve-3d;
+  will-change: clip-path, transform;
+}
+
+.dynt-formation.dynt-kinetic :where(.dynt-kinetic__corner) {
+  display: block;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  transition: opacity calc(var(--dynt-formation-duration) * 0.16) var(--dynt-formation-easing);
+  width: 0;
+  z-index: 1;
+}
+
+:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner)::before,
+:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner)::after {
+  box-sizing: border-box;
+  content: "";
+  pointer-events: none;
+  position: absolute;
+}
+
+:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner)::before {
+  border-block-start: var(--dynt-line-width) var(--dynt-line-style) var(--dynt-line-color);
+  width: var(--dynt-corner-overflow);
+}
+
+:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner)::after {
+  border-inline-start: var(--dynt-line-width) var(--dynt-line-style) var(--dynt-line-color);
+  height: var(--dynt-corner-overflow);
+}
+
+:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--tl) {
+  --dynt-corner-overflow: var(--dynt-tl-overflow);
+  inset-block-start: 0;
+  inset-inline-start: 0;
+}
+
+:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--tr) {
+  --dynt-corner-overflow: var(--dynt-tr-overflow);
+  inset-block-start: 0;
+  inset-inline-end: 0;
+}
+
+:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--bl) {
+  --dynt-corner-overflow: var(--dynt-bl-overflow);
+  inset-block-end: 0;
+  inset-inline-start: 0;
+}
+
+:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--br) {
+  --dynt-corner-overflow: var(--dynt-br-overflow);
+  inset-block-end: 0;
+  inset-inline-end: 0;
+}
+
+:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--tl)::before,
+:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--bl)::before {
+  inset-inline-end: 0;
+}
+
+:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--tr)::before,
+:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--br)::before {
+  inset-inline-start: 0;
+}
+
+:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--tl)::after,
+:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--tr)::after {
+  inset-block-end: 0;
+}
+
+:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--bl)::after,
+:where(.dynt-formation.dynt-kinetic) :where(.dynt-kinetic__corner--br)::after {
+  inset-block-start: 0;
+}
+
+.dynt-formation.dynt-kinetic[data-dynt-formation-phase="constructing"] :where(.dynt-kinetic__corner),
+.dynt-formation.dynt-kinetic[data-dynt-formation-phase="enclosed"] :where(.dynt-kinetic__corner),
+.dynt-formation.dynt-kinetic[data-dynt-formation-phase="revealing"] :where(.dynt-kinetic__corner),
+.dynt-formation.dynt-kinetic[data-dynt-formation-phase="formed"] :where(.dynt-kinetic__corner),
+.dynt-formation.dynt-kinetic[data-dynt-formation-phase="withdrawing"] :where(.dynt-kinetic__corner),
+.dynt-formation.dynt-kinetic[data-dynt-formation-phase="deconstructing"] :where(.dynt-kinetic__corner) {
+  opacity: 1;
+}
+
 :where(.dynt-formation--line-push)::before,
 :where(.dynt-formation--line-rise)::after {
   border-block: var(--dynt-line-width) var(--dynt-line-style) var(--dynt-line-color);
@@ -145,6 +235,11 @@
   border-inline: var(--dynt-line-width) var(--dynt-line-style) var(--dynt-line-color);
   inset-block: calc(var(--dynt-formation-overflow) * -1);
   inset-inline: 0;
+}
+
+:where(.dynt-formation.dynt-kinetic)::before,
+:where(.dynt-formation.dynt-kinetic)::after {
+  inset: 0;
 }
 
 :where(.dynt-formation--line-push)::before {
@@ -213,5 +308,10 @@
   :where(.dynt-formation--line-rise)::after {
     transition-delay: 0ms;
     transition-duration: 1ms;
+  }
+
+  :where(.dynt-formation.dynt-kinetic)::before,
+  :where(.dynt-formation.dynt-kinetic)::after {
+    transform: none;
   }
 }

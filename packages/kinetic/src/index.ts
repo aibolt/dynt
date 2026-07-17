@@ -140,8 +140,14 @@ type MotionProperty =
   | "pointer-x"
   | "pointer-y"
   | "pressure"
+  | "shadow-x"
+  | "shadow-y"
+  | "tl-overflow"
   | "tilt-x"
   | "tilt-y"
+  | "tr-overflow"
+  | "bl-overflow"
+  | "br-overflow"
   | "wave-opacity"
   | "wave-scale"
   | "wave-x"
@@ -207,6 +213,7 @@ const DEFAULT_EXCLUDE_SELECTOR = "[data-dynt-ignore]";
 const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 const KINETIC_ATTRIBUTE = "data-dynt-kinetic";
 const CANVAS_ATTRIBUTE = "data-dynt-kinetic-canvas";
+const CORNER_ATTRIBUTE = "data-dynt-kinetic-corner";
 const LAYER_ATTRIBUTE = "data-dynt-kinetic-layer";
 const REACTOR_CLASS = "dynt-kinetic__reactor";
 const REACTOR_SELECTOR = [
@@ -250,7 +257,7 @@ const DEFAULT_CONFIGURATION: KineticConfiguration = Object.freeze({
   }),
   content: false,
   contentLift: 8,
-  contentTravel: 6,
+  contentTravel: 3,
   drift: false,
   driftAmount: 1.5,
   field: Object.freeze({
@@ -278,7 +285,7 @@ const DEFAULT_CONFIGURATION: KineticConfiguration = Object.freeze({
   }),
   maxActive: 24,
   maxSurfaces: 250,
-  maxTilt: 8,
+  maxTilt: 1.35,
   pressure: true,
   response: 0.18,
   tilt: true,
@@ -293,8 +300,14 @@ const MOTION_PROPERTIES: Readonly<Record<MotionProperty, string>> = {
   "pointer-x": "--dynt-pointer-x",
   "pointer-y": "--dynt-pointer-y",
   pressure: "--dynt-pressure",
+  "shadow-x": "--dynt-shadow-x",
+  "shadow-y": "--dynt-shadow-y",
+  "tl-overflow": "--dynt-tl-overflow",
   "tilt-x": "--dynt-tilt-x",
   "tilt-y": "--dynt-tilt-y",
+  "tr-overflow": "--dynt-tr-overflow",
+  "bl-overflow": "--dynt-bl-overflow",
+  "br-overflow": "--dynt-br-overflow",
   "wave-opacity": "--dynt-wave-opacity",
   "wave-scale": "--dynt-wave-scale",
   "wave-x": "--dynt-wave-x",
@@ -785,6 +798,20 @@ function syncReactors(ownership: ElementOwnership) {
   }
 }
 
+function readFormationOverflow(element: HTMLElement) {
+  const inlineValue = element.style.getPropertyValue("--dynt-formation-overflow");
+  const value = inlineValue || element.ownerDocument.defaultView
+    ?.getComputedStyle(element)
+    .getPropertyValue("--dynt-formation-overflow");
+  const overflow = Number.parseFloat(value ?? "");
+  return Number.isFinite(overflow) ? overflow : 14;
+}
+
+function cornerOverflow(x: number, y: number, cornerX: number, cornerY: number, base: number) {
+  const distance = Math.hypot(x - cornerX, y - cornerY) / Math.SQRT2;
+  return base * (0.45 + Math.min(1, distance) * 1.1);
+}
+
 function writeMotionState(ownership: ElementOwnership) {
   const { element, state } = ownership;
   const configuration = ownership.activeOwner?.configuration ?? DEFAULT_CONFIGURATION;
@@ -795,6 +822,31 @@ function writeMotionState(ownership: ElementOwnership) {
   const maxTilt = configuration.maxTilt;
   setMotionProperty(element, "tilt-x", `${(-state.current.y * maxTilt).toFixed(3)}deg`);
   setMotionProperty(element, "tilt-y", `${(state.current.x * maxTilt).toFixed(3)}deg`);
+  setMotionProperty(element, "shadow-x", `${(-state.current.x * 18).toFixed(3)}px`);
+  setMotionProperty(element, "shadow-y", `${(12 - state.current.y * 10).toFixed(3)}px`);
+  const pointerX = (state.current.x + 1) / 2;
+  const pointerY = (state.current.y + 1) / 2;
+  const baseOverflow = readFormationOverflow(element);
+  setMotionProperty(
+    element,
+    "tl-overflow",
+    `${cornerOverflow(pointerX, pointerY, 0, 0, baseOverflow).toFixed(3)}px`,
+  );
+  setMotionProperty(
+    element,
+    "tr-overflow",
+    `${cornerOverflow(pointerX, pointerY, 1, 0, baseOverflow).toFixed(3)}px`,
+  );
+  setMotionProperty(
+    element,
+    "bl-overflow",
+    `${cornerOverflow(pointerX, pointerY, 0, 1, baseOverflow).toFixed(3)}px`,
+  );
+  setMotionProperty(
+    element,
+    "br-overflow",
+    `${cornerOverflow(pointerX, pointerY, 1, 1, baseOverflow).toFixed(3)}px`,
+  );
   setMotionProperty(element, "drift-x", `${state.driftX.toFixed(3)}px`);
   setMotionProperty(element, "drift-y", `${state.driftY.toFixed(3)}px`);
   setMotionProperty(
@@ -914,6 +966,12 @@ function createLayer(element: HTMLElement) {
   layer.setAttribute("aria-hidden", "true");
   canvas.className = "dynt-kinetic__canvas";
   canvas.setAttribute(CANVAS_ATTRIBUTE, "");
+  for (const corner of ["tl", "tr", "bl", "br"]) {
+    const extension = element.ownerDocument.createElement("span");
+    extension.className = `dynt-kinetic__corner dynt-kinetic__corner--${corner}`;
+    extension.setAttribute(CORNER_ATTRIBUTE, corner);
+    layer.append(extension);
+  }
   layer.append(canvas);
   element.append(layer);
   return { canvas, layer };
@@ -1160,7 +1218,6 @@ export function createKinetic({
     }
     const rectangle = element.getBoundingClientRect();
     if (rectangle.width <= 0 || rectangle.height <= 0) return;
-
     const x = clamp(((event.clientX - rectangle.left) / rectangle.width) * 2 - 1, -1, 1);
     const y = clamp(((event.clientY - rectangle.top) / rectangle.height) * 2 - 1, -1, 1);
     const radialPressure = 1 - Math.min(1, Math.hypot(x, y) / Math.SQRT2);

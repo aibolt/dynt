@@ -18,7 +18,7 @@ test("Kinetic routes input locally, pauses, resumes, and adopts dynamic targets"
   await expect.poll(() => nested.locator(".dynt-kinetic__reactor").evaluate((element) => (
     Math.abs(Number.parseFloat(element.style.getPropertyValue("--dynt-reactor-x")))
   ))).toBeGreaterThan(0);
-  await expect(nested.locator("[data-dynt-kinetic-layer]")).toHaveCSS("transform", "none");
+  await expect(nested.locator("[data-dynt-kinetic-layer]")).not.toHaveCSS("transform", "none");
 
   await page.getByRole("button", { name: "Pause" }).click();
   await expect(nested).toHaveCSS("--dynt-tilt-y", "0.000deg");
@@ -62,14 +62,17 @@ test("Kinetic preserves accessibility and accepts bounded pen input", async ({ p
   await expect(nested).toBeFocused();
   expect(await nested.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe("none");
 
-  await nested.dispatchEvent("pointermove", {
-    bubbles: true,
-    clientX: box.x + box.width / 2,
-    clientY: box.y + box.height / 2,
-    composed: true,
-    pointerType: "pen",
-    pressure: 0.8,
-  });
+  for (let index = 0; index < 4; index += 1) {
+    await nested.dispatchEvent("pointermove", {
+      bubbles: true,
+      clientX: box.x + box.width / 2,
+      clientY: box.y + box.height / 2,
+      composed: true,
+      pointerType: "pen",
+      pressure: 0.8,
+    });
+    await page.waitForTimeout(32);
+  }
   await expect.poll(() => nested.evaluate((element) => (
     Number.parseFloat(element.style.getPropertyValue("--dynt-pressure"))
   ))).toBeGreaterThan(0.5);

@@ -96,7 +96,12 @@ test("combined mode coordinates through DOM state in either initialization order
     dispatchPointer(window, button);
     assert.equal(frames.count, 1);
     frames.runNext();
-    assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "8.000deg");
+    assert.equal(button.style.getPropertyValue("--dynt-tilt-y"), "1.350deg");
+    assert.equal(
+      Number.parseFloat(button.style.getPropertyValue("--dynt-tl-overflow"))
+        > Number.parseFloat(button.style.getPropertyValue("--dynt-tr-overflow")),
+      true,
+    );
 
     formation.withdraw(button);
     assert.equal(frames.count, 0);
