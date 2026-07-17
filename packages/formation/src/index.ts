@@ -92,6 +92,11 @@ export function createFormation({
   const snapshots = new Map<HTMLElement, ElementSnapshot>();
   const document = root.nodeType === 9 ? root as Document : root.ownerDocument;
   const view = document?.defaultView;
+  const observerOptions: MutationObserverInit = {
+    attributes: true,
+    childList: true,
+    subtree: true,
+  };
   let destroyed = false;
   let refreshScheduled = false;
   let observer: MutationObserver | null = null;
@@ -110,16 +115,44 @@ export function createFormation({
     return true;
   }
 
+  function restore(element: HTMLElement, snapshot: ElementSnapshot) {
+    if (!snapshot.hadBaseClass) element.classList.remove(BASE_CLASS);
+    if (!snapshot.hadProfileClass) element.classList.remove(profileClass);
+
+    if (snapshot.formationAttribute === null) {
+      element.removeAttribute("data-dynt-formation");
+    } else {
+      element.setAttribute("data-dynt-formation", snapshot.formationAttribute);
+    }
+  }
+
   function refresh() {
     if (destroyed) return 0;
 
-    let enhancedCount = 0;
+    const activeObserver = observer;
+    activeObserver?.disconnect();
 
-    for (const element of findTargets(root, selector, excludeSelector)) {
-      if (enhance(element)) enhancedCount += 1;
+    try {
+      let enhancedCount = 0;
+      const targets = findTargets(root, selector, excludeSelector);
+      const targetSet = new Set(targets);
+
+      for (const [element, snapshot] of snapshots) {
+        if (targetSet.has(element)) continue;
+        restore(element, snapshot);
+        snapshots.delete(element);
+      }
+
+      for (const element of targets) {
+        if (enhance(element)) enhancedCount += 1;
+      }
+
+      return enhancedCount;
+    } finally {
+      if (!destroyed && observer === activeObserver) {
+        activeObserver?.observe(root, observerOptions);
+      }
     }
-
-    return enhancedCount;
   }
 
   function scheduleRefresh() {
@@ -145,14 +178,7 @@ export function createFormation({
     observer = null;
 
     for (const [element, snapshot] of snapshots) {
-      if (!snapshot.hadBaseClass) element.classList.remove(BASE_CLASS);
-      if (!snapshot.hadProfileClass) element.classList.remove(profileClass);
-
-      if (snapshot.formationAttribute === null) {
-        element.removeAttribute("data-dynt-formation");
-      } else {
-        element.setAttribute("data-dynt-formation", snapshot.formationAttribute);
-      }
+      restore(element, snapshot);
     }
 
     snapshots.clear();
@@ -167,7 +193,7 @@ export function createFormation({
     }
 
     observer = new view.MutationObserver(scheduleRefresh);
-    observer.observe(root, { childList: true, subtree: true });
+    observer.observe(root, observerOptions);
   }
 
   return {

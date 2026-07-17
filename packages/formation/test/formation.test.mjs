@@ -74,6 +74,27 @@ test("refresh enhances new matches without duplicating existing work", () => {
   assert.equal(controller.elements.length, 2);
 });
 
+test("refresh restores elements that no longer match", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = `
+    <main><button class="target existing" data-dynt-formation="application">Button</button></main>
+  `;
+  const button = document.querySelector("button");
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: ".target",
+  });
+
+  button.classList.remove("target");
+  assert.equal(controller.refresh(), 0);
+
+  assert.equal(controller.elements.length, 0);
+  assert.equal(button.classList.contains("existing"), true);
+  assert.equal(button.classList.contains("dynt-formation"), false);
+  assert.equal(button.getAttribute("data-dynt-formation"), "application");
+});
+
 test("observe enhances synchronous insertions in one batched refresh", async () => {
   const window = new Window();
   const document = window.document;
@@ -123,6 +144,65 @@ test("observe ignores new matches inside excluded subtrees", async () => {
 
   assert.deepEqual(controller.elements.map((element) => element.id), ["allowed-later"]);
   assert.equal(document.querySelector("#ignored-later").dataset.dyntFormation, undefined);
+});
+
+test("observe restores an element removed from the managed root", async () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = `
+    <main><button id="moving" class="application">Move me</button></main>
+    <aside></aside>
+  `;
+  const main = document.querySelector("main");
+  const button = document.querySelector("#moving");
+  const controller = createFormation({
+    root: main,
+    selector: "button",
+    observe: true,
+  });
+
+  document.querySelector("aside").append(button);
+  await flushMutations(window);
+
+  assert.equal(controller.elements.length, 0);
+  assert.equal(button.classList.contains("application"), true);
+  assert.equal(button.classList.contains("dynt-formation"), false);
+  assert.equal(button.dataset.dyntFormation, undefined);
+});
+
+test("observe reconciles selector and exclusion attribute changes", async () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = `
+    <main><section><button class="target">Button</button></section></main>
+  `;
+  const section = document.querySelector("section");
+  const button = document.querySelector("button");
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: ".target",
+    observe: true,
+  });
+
+  button.classList.remove("target");
+  await flushMutations(window);
+  assert.equal(controller.elements.length, 0);
+  assert.equal(button.dataset.dyntFormation, undefined);
+
+  button.classList.add("target");
+  await flushMutations(window);
+  assert.deepEqual(controller.elements, [button]);
+  assert.equal(button.dataset.dyntFormation, "line-push");
+
+  section.setAttribute("data-dynt-ignore", "");
+  await flushMutations(window);
+  assert.equal(controller.elements.length, 0);
+  assert.equal(button.dataset.dyntFormation, undefined);
+
+  section.removeAttribute("data-dynt-ignore");
+  await flushMutations(window);
+  assert.deepEqual(controller.elements, [button]);
+  assert.equal(button.dataset.dyntFormation, "line-push");
 });
 
 test("destroy disconnects observation and cancels pending refresh work", async () => {
