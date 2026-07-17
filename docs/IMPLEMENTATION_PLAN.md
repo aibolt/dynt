@@ -255,6 +255,8 @@ Advanced effects will be introduced separately after the minimum engine is stabl
 
 Each effect must be independently enabled, locally owned, removable, reduced-motion aware, and subject to a rendering budget.
 
+The portable renderer implements the pressure field and directional flow on an engine-owned canvas. Square, connected hexagon, circle, and interlocked diamond geometry share one scheduler and automatic three-level surface sizing. Color sources support a single color, discrete bands, or interpolated gradients. Flow configuration exposes bounded speed, thickness, recovery, intensity, turbulence, growth, terminal overflow, deterministic seeds, and optional bounded multi-wave operation.
+
 ### 7.5 Rendering budget
 
 Kinetic will enforce measurable limits:

@@ -58,6 +58,14 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 - [x] Add rendering caps, idle suspension, and performance benchmarks.
 - [x] Verify nested ownership and effect cleanup.
 
+## Phase 4.6 — Signature renderer parity
+
+- [x] Upgrade Formation to four complete Line Forge rails with configurable overflow, style, fill, easing, and shared motion channels.
+- [x] Replace the generic Kinetic grid and ring with a bounded canvas pressure lens and directional cell flow.
+- [x] Add square, connected hexagon, circle, and interlocked diamond geometry.
+- [x] Add three-level nested sizing, color bands and gradients, turbulence, growth, terminal overflow, stable seeds, and bounded multi-wave operation.
+- [x] Complete cross-browser visual verification of the upgraded renderers.
+
 ## Phase 5 — Framework support
 
 - [x] Add thin, independent React adapter entry points.

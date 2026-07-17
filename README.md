@@ -4,8 +4,8 @@ DYNT adds constructed geometry and physical response to an existing interface fr
 
 The two engines are independent:
 
-- `@dynt/formation` — line-led construction, enclosure, reveal, and reversible deconstruction.
-- `@dynt/kinetic` — pointer pressure, tilt, drift, waves, impact, and content response.
+- `@dynt/formation` — four-rail Line Forge construction, enclosure, reveal, and reversible deconstruction.
+- `@dynt/kinetic` — cell geometry, local pressure, directional wave flow, tilt, drift, and content response.
 
 Install either engine by itself, combine them through their DOM coordination contract, or use the thin React and Web Component integrations.
 
@@ -43,10 +43,11 @@ const formation = createFormation({
 ```
 
 ```ts
-import { createKinetic } from "@dynt/kinetic";
+import { createKinetic, kineticPresets } from "@dynt/kinetic";
 import "@dynt/kinetic/styles.css";
 
 const kinetic = createKinetic({
+  ...kineticPresets.structural,
   root: document.querySelector("#app"),
   selector: "section, article, button, [data-surface]",
   observe: true,
@@ -59,18 +60,18 @@ The root and selector are always explicit. Matching elements added later are ado
 
 | Package | Purpose | Requires the other engine |
 | --- | --- | --- |
-| `@dynt/formation` | Line Push, Line Rise, lifecycle, profiles, and tokens | No |
-| `@dynt/kinetic` | Pressure, tilt, drift, local field, wave, impact, and content channels | No |
+| `@dynt/formation` | Line Forge rails, Line Push, Line Rise, lifecycle, profiles, and tokens | No |
+| `@dynt/kinetic` | Cell geometry, pressure lens, directional flow, tilt, drift, impact, and content channels | No |
 | `@dynt/react` | Independent React hooks for either engine | No; engines are optional peers |
 | `@dynt/web-components` | Independent custom-element helpers for either engine | No; engines are optional peers |
 
 ## Quality gates
 
-- 44 Formation unit, DOM, profile, lifecycle, shadow-root, and performance checks.
-- 21 Kinetic unit, DOM, input, effects, shadow-root, and performance checks.
+- 45 Formation unit, DOM, profile, lifecycle, shadow-root, and performance checks.
+- 26 Kinetic unit, DOM, input, geometry, effects, shadow-root, and performance checks.
 - 6 adapter checks across React and Web Components.
 - 2 composition checks covering initialization and cleanup order.
-- 22 passing browser checks plus two intentional visual-test skips across Chromium, Firefox, and WebKit.
+- 25 passing browser checks plus two intentional visual-test skips across Chromium, Firefox, and WebKit.
 - Clean tarball installation and import verification for all four public packages.
 - High-severity dependency audit and reproducible release workflow.
 

@@ -23,7 +23,9 @@ Owns physical response:
 
 - pointer pressure
 - tilt and drift
-- traveling waves
+- bounded canvas pressure lens
+- square, connected hexagon, circle, and interlocked diamond geometry
+- directional turbulent wave flow
 - local impact
 - content coupling
 
@@ -34,6 +36,8 @@ It must run without `@dynt/formation`.
 Both engines use the browser DOM as their shared platform contract. A developer initializes an engine once with selectors and configuration; DYNT enhances matching existing and future elements without requiring component-by-component edits.
 
 Framework adapters only manage mounting and cleanup. They do not duplicate formation or kinetic behavior.
+
+Formation draws four complete rails with host pseudo-elements. Kinetic owns one accessibility-hidden canvas layer on compatible surfaces. Both consume the same bounded pointer, tilt, and drift variables, which keeps rails and cell fields visually coupled without taking ownership of the application's host transform.
 
 ## Rules
 

@@ -6,7 +6,7 @@ Framework-independent, line-led construction and reversible formation lifecycle.
 npm install @dynt/formation
 ```
 
-Formation applies Line Push or Line Rise to existing HTML through one root-level initializer.
+Formation applies four-rail Line Forge construction through one root-level initializer. Line Push and Line Rise select different construction directions without changing the integration contract.
 
 ```ts
 import { createFormation } from "@dynt/formation";
@@ -20,8 +20,12 @@ const formation = createFormation({
   observe: true,
   tokens: {
     duration: 320,
+    easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+    fillColor: "rgb(8 24 32 / 0.92)",
     lineColor: "#67e8f9",
+    lineStyle: "solid",
     lineWidth: "1px",
+    overflow: 14,
   },
   groups: [
     { selector: ".featured", tokens: { lineWidth: "2px" } },
@@ -49,7 +53,7 @@ Repeated and nested controllers share one internal ownership record per element.
 
 ## Profiles
 
-Formation includes two independent, line-led profiles:
+Formation includes two independent Line Forge profiles. Both produce four complete rails, optional corner overflow, enclosure, fill/reveal, and reversible deconstruction:
 
 - `line-push` constructs horizontal edges before vertical edges.
 - `line-rise` constructs vertical edges before horizontal edges.
@@ -60,9 +64,11 @@ Two controllers may share a target only when they use the same profile definitio
 
 ## Configuration layers
 
-Formation applies configuration in this order: profile CSS defaults, controller `tokens`, matching `groups` in array order, and local data attributes. Supported local overrides are `data-dynt-formation-duration`, `data-dynt-line-color`, and `data-dynt-line-width`. `update()` replaces supplied controller or group layers and reapplies them without replacing the managed elements.
+Formation applies configuration in this order: profile CSS defaults, controller `tokens`, matching `groups` in array order, and local data attributes. Supported local overrides are `data-dynt-formation-duration`, `data-dynt-formation-easing`, `data-dynt-fill-color`, `data-dynt-line-color`, `data-dynt-line-style`, `data-dynt-line-width`, and `data-dynt-formation-overflow`. `update()` replaces supplied controller or group layers and reapplies them without replacing the managed elements.
 
-Duration is expressed in milliseconds. Color and width accept non-empty CSS values. Destroying a controller restores the exact inline custom-property values and priorities that existed before Formation managed the target.
+Duration and overflow are expressed in milliseconds and pixels respectively. Colors, width, and easing accept non-empty CSS values. Line style accepts `solid`, `dashed`, `dotted`, or `double`. Destroying a controller restores the exact inline custom-property values and priorities that existed before Formation managed the target.
+
+The rails consume DYNT's shared pointer, tilt, and drift channels when Kinetic is also present. The four rail extensions therefore remain attached to their owning plate while the application-owned host transform remains untouched.
 
 ## Lifecycle contract
 

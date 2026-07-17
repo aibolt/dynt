@@ -8,7 +8,7 @@ Formation owns `data-dynt-formation-phase` and emits the bubbling `dynt:formatio
 
 Kinetic immediately returns an owned surface to rest during locating, construction, reveal, withdrawal, or deconstruction. When the surface reaches `formed`, normal pointer input resumes. This rule applies regardless of initialization order.
 
-Formation geometry stays on host pseudo-elements at layer 1. Kinetic renders inside its accessibility-hidden child layer at layer 0 and applies transforms only to that layer. Kinetic therefore does not separate Formation lines from their owning host surface or replace application transforms.
+Formation geometry stays on host pseudo-elements at layer 1. Kinetic renders inside its accessibility-hidden canvas layer at layer 0. Both renderers consume the same pointer, tilt, and drift channels, so four-rail overflow and the cell plate remain visually attached while the application's host transform remains untouched.
 
 ## Cleanup
 

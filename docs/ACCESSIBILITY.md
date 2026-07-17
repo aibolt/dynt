@@ -5,7 +5,7 @@ DYNT decorates existing controls and surfaces. It does not replace host elements
 ## Engine guarantees
 
 - Formation uses host pseudo-elements with `pointer-events: none`.
-- Kinetic child decorations use `aria-hidden="true"`, have no tab stop, and use `pointer-events: none`.
+- Kinetic canvas decorations sit inside an `aria-hidden="true"` layer, have no tab stop, and use `pointer-events: none`.
 - Void elements such as `input` receive no invalid child decoration.
 - Native links, buttons, inputs, labels, names, values, focus order, and keyboard behavior remain owned by the application.
 - Application-owned classes, attributes, styles, and style priorities are restored after the final controller is destroyed.
