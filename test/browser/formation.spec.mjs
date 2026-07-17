@@ -1,6 +1,18 @@
 import { expect, test } from "@playwright/test";
 
 test("Formation viewport flow travels from the window and stages targets", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__dyntConstructingOrder = [];
+    const orderedTargetIds = new Set(["section-target", "link-target", "button-target"]);
+    document.addEventListener("dynt:formation-phase", (event) => {
+      if (
+        event.detail?.phase === "constructing"
+        && orderedTargetIds.has(event.target.id)
+      ) {
+        window.__dyntConstructingOrder.push(event.target.id);
+      }
+    });
+  });
   await page.goto("/examples/formation-browser/");
   const layer = page.locator("[data-dynt-formation-flow-layer]");
   const firstFlight = layer.locator("[data-dynt-flow-target='section-target']");
@@ -8,22 +20,25 @@ test("Formation viewport flow travels from the window and stages targets", async
   await expect(layer).toHaveAttribute("aria-hidden", "true");
   await expect(firstFlight).toHaveCount(1);
   await expect(travellingLine).toHaveCSS("animation-name", "dynt-flow-from-left");
-
-  const start = await travellingLine.boundingBox();
-  await page.waitForTimeout(120);
-  const moved = await travellingLine.boundingBox();
-  expect(moved.x).toBeGreaterThan(start.x + 10);
+  expect(await travellingLine.evaluate((element) => (
+    element.getAnimations()[0]?.effect?.getComputedTiming().duration
+  ))).toBe(820);
 
   await expect.poll(
     () => page.locator("#section-target").getAttribute("data-dynt-formation-phase"),
   ).not.toBe("unformed");
-  expect(
-    await page.locator("#button-target").getAttribute("data-dynt-formation-phase"),
-  ).toBe("unformed");
   await expect(page.locator("#section-target")).toHaveAttribute(
     "data-dynt-formation-phase",
     "formed",
   );
+  await expect.poll(
+    () => page.evaluate(() => window.__dyntConstructingOrder.length),
+  ).toBeGreaterThanOrEqual(3);
+  expect(await page.evaluate(() => window.__dyntConstructingOrder.slice(0, 3))).toEqual([
+    "section-target",
+    "link-target",
+    "button-target",
+  ]);
   await expect(page.locator("[data-dynt-formation-flow]")).toHaveCount(0);
 
   await page.getByRole("button", { name: "Withdraw all" }).click();
