@@ -77,6 +77,26 @@ test("enhances only matching HTML targets inside the supplied root", () => {
   assert.equal(document.querySelector("rect").hasAttribute("data-dynt-kinetic"), false);
 });
 
+test("an explicitly supplied shadow root owns input within its boundary", () => {
+  const window = new Window();
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = "<div id='host'></div><button id='outside'>Outside</button>";
+  const shadowRoot = document.querySelector("#host").attachShadow({ mode: "open" });
+  shadowRoot.innerHTML = "<button id='inside'>Inside</button>";
+  const inside = shadowRoot.querySelector("#inside");
+  setRectangle(inside);
+  const controller = createKinetic({ root: shadowRoot, selector: "button" });
+
+  dispatchPointer(window, inside, "pointermove", { pressure: 0.8 });
+  frames.runNext();
+  assert.ok(Number.parseFloat(inside.style.getPropertyValue("--dynt-pressure")) > 0);
+  assert.equal(document.querySelector("#outside").hasAttribute("data-dynt-kinetic"), false);
+
+  controller.destroy();
+  assert.equal(inside.hasAttribute("data-dynt-kinetic"), false);
+});
+
 test("decoration layers are hidden from accessibility and omitted for void elements", () => {
   const window = new Window();
   const document = window.document;

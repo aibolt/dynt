@@ -33,6 +33,24 @@ test("enhances only matching elements inside the supplied root", () => {
   assert.equal(document.querySelector("#outside").dataset.dyntFormation, undefined);
 });
 
+test("an explicitly supplied shadow root stays within its boundary", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<div id='host'></div><button id='outside'>Outside</button>";
+  const shadowRoot = document.querySelector("#host").attachShadow({ mode: "open" });
+  shadowRoot.innerHTML = "<button id='inside'>Inside</button>";
+  const inside = shadowRoot.querySelector("#inside");
+  const controller = createFormation({ root: shadowRoot, selector: "button" });
+
+  controller.form(inside);
+  dispatchTransformTransition(window, inside, "::after");
+  assert.equal(inside.dataset.dyntFormationPhase, "formed");
+  assert.equal(document.querySelector("#outside").dataset.dyntFormation, undefined);
+
+  controller.destroy();
+  assert.equal(inside.dataset.dyntFormation, undefined);
+});
+
 test("preserves target identity and application event behavior", () => {
   const window = new Window();
   const document = window.document;
