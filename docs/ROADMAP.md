@@ -54,7 +54,7 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 
 ## Phase 4.5 — Advanced Kinetic effects
 
-- [ ] Add advanced effects one at a time behind independent configuration.
+- [x] Add drift, local field, wave, impact, and content channels behind independent configuration.
 - [ ] Add rendering caps, idle suspension, and performance benchmarks.
 - [ ] Verify nested ownership and effect cleanup.
 

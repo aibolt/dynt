@@ -11,6 +11,7 @@ function flushMutations(window) {
 function installAnimationFrames(window) {
   const callbacks = [];
   let identifier = 0;
+  let timestamp = window.performance.now();
   window.requestAnimationFrame = (callback) => {
     callbacks.push({ callback, identifier: ++identifier });
     return identifier;
@@ -25,7 +26,8 @@ function installAnimationFrames(window) {
     },
     runNext() {
       const next = callbacks.shift();
-      next?.callback(0);
+      timestamp += 16;
+      next?.callback(timestamp);
     },
   };
 }
@@ -359,6 +361,130 @@ test("damped motion stops scheduling after reaching rest", () => {
   controller.destroy();
 });
 
+test("drift runs only during active input and decays back to idle", () => {
+  const window = new Window();
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = "<main><button>Button</button></main>";
+  const main = document.querySelector("main");
+  const button = document.querySelector("button");
+  setRectangle(button);
+  const controller = createKinetic({
+    root: main,
+    selector: "button",
+    effects: { drift: true },
+    motion: { drift: 2, response: 0.5 },
+  });
+
+  dispatchPointer(window, button, "pointermove");
+  frames.runNext();
+  assert.equal(frames.count, 1);
+  assert.notEqual(button.style.getPropertyValue("--dynt-drift-x"), "0.000px");
+
+  dispatchPointer(window, main, "pointerleave");
+  let frameCount = 0;
+  while (frames.count > 0 && frameCount < 30) {
+    frames.runNext();
+    frameCount += 1;
+  }
+  assert.equal(frames.count, 0);
+  assert.equal(button.style.getPropertyValue("--dynt-drift-x"), "0.000px");
+  assert.equal(button.style.getPropertyValue("--dynt-drift-y"), "0.000px");
+  controller.destroy();
+});
+
+test("pointer waves replace prior reactions and finish within their duration", () => {
+  const window = new Window();
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = "<main><button>Button</button></main>";
+  const button = document.querySelector("button");
+  setRectangle(button);
+  const controller = createKinetic({
+    root: document.querySelector("main"),
+    selector: "button",
+    effects: { wave: true },
+    motion: { response: 1, waveDuration: 100 },
+  });
+
+  dispatchPointer(window, button, "pointerdown", { clientX: 80 });
+  dispatchPointer(window, button, "pointerdown", { clientX: 20 });
+  assert.equal(frames.count, 1);
+  frames.runNext();
+  assert.equal(button.style.getPropertyValue("--dynt-wave-opacity"), "0.7500");
+  assert.equal(button.style.getPropertyValue("--dynt-wave-x"), "20.00%");
+
+  let frameCount = 0;
+  while (frames.count > 0 && frameCount < 20) {
+    frames.runNext();
+    frameCount += 1;
+  }
+  assert.equal(frames.count, 0);
+  assert.equal(button.style.getPropertyValue("--dynt-wave-opacity"), "0.0000");
+  controller.destroy();
+});
+
+test("impact produces one bounded rebound and content response channel", () => {
+  const window = new Window();
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = `
+    <main><button id="inside">Button</button></main><button id="outside">Outside</button>
+  `;
+  const inside = document.querySelector("#inside");
+  const controller = createKinetic({
+    root: document.querySelector("main"),
+    selector: "button",
+    effects: { content: true },
+    motion: { response: 0.5 },
+  });
+
+  controller.impact(inside, { pressure: 0.8, x: 0.5, y: -0.5 });
+  assert.equal(frames.count, 1);
+  frames.runNext();
+  assert.equal(Number(inside.style.getPropertyValue("--dynt-pressure")) > 0, true);
+  assert.equal(inside.style.getPropertyValue("--dynt-content-x"), "1.000px");
+  assert.equal(inside.style.getPropertyValue("--dynt-content-y"), "-1.000px");
+
+  let frameCount = 0;
+  while (frames.count > 0 && frameCount < 40) {
+    frames.runNext();
+    frameCount += 1;
+  }
+  assert.equal(frames.count, 0);
+  assert.equal(inside.style.getPropertyValue("--dynt-pressure"), "0.0000");
+  assert.equal(inside.style.getPropertyValue("--dynt-content-x"), "0.000px");
+  assert.throws(
+    () => controller.impact(document.querySelector("#outside")),
+    /managed target/,
+  );
+  assert.throws(
+    () => controller.impact(inside, { x: 2 }),
+    /coordinates must be between -1 and 1/,
+  );
+  controller.destroy();
+});
+
+test("reduced-motion impact uses a static cue without animation frames", async () => {
+  const window = new Window();
+  const frames = installAnimationFrames(window);
+  window.matchMedia = () => ({ matches: true });
+  const document = window.document;
+  document.body.innerHTML = "<main><button>Button</button></main>";
+  const button = document.querySelector("button");
+  const controller = createKinetic({
+    root: document.querySelector("main"),
+    selector: "button",
+  });
+
+  controller.impact(button);
+  assert.equal(frames.count, 0);
+  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "1.0000");
+  await new Promise((resolve) => window.setTimeout(resolve, 140));
+  assert.equal(button.style.getPropertyValue("--dynt-pressure"), "0.0000");
+  controller.destroy();
+});
+
 test("destroy restores application motion properties exactly", () => {
   const window = new Window();
   const document = window.document;
@@ -417,5 +543,21 @@ test("pause, resume, destroy, and input validation are idempotent", () => {
       effects: { pressure: "yes" },
     }),
     /effects must be boolean values/,
+  );
+  assert.throws(
+    () => createKinetic({
+      root: document,
+      selector: "button",
+      motion: { drift: 5 },
+    }),
+    /drift must be between 0 and 4/,
+  );
+  assert.throws(
+    () => createKinetic({
+      root: document,
+      selector: "button",
+      motion: { waveDuration: 50 },
+    }),
+    /waveDuration must be between 100 and 2000/,
   );
 });

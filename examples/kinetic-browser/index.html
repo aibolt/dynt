@@ -62,6 +62,7 @@
     <div class="controls">
       <button id="pause" type="button">Pause</button>
       <button id="resume" type="button">Resume</button>
+      <button id="impact" type="button">Impact parent</button>
       <button id="add-target" type="button">Add target</button>
     </div>
 
@@ -89,8 +90,15 @@
         selector: ".surface",
         observe: true,
         effects: {
+          content: true,
+          drift: true,
           pressure: true,
           tilt: true,
+          wave: true,
+        },
+        motion: {
+          drift: 1,
+          waveDuration: 420,
         },
       });
       let statusTimer;
@@ -118,6 +126,14 @@
       document.querySelector("#resume").addEventListener("click", () => {
         kinetic.resume();
         renderStatus();
+      });
+      document.querySelector("#impact").addEventListener("click", () => {
+        kinetic.impact(document.querySelector("#parent-surface"), {
+          pressure: 1,
+          x: 0,
+          y: 0,
+        });
+        scheduleStatus();
       });
       document.querySelector("#add-target").addEventListener("click", () => {
         const article = document.createElement("article");
