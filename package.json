@@ -1,15 +1,22 @@
 {
   "name": "dynt",
-  "version": "0.0.0",
+  "version": "0.5.0",
   "private": true,
   "description": "Independent formation and kinetic engines for framework-agnostic interfaces.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aibolt/dynt.git"
+  },
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present && node --test test/*.test.mjs",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "test:packages": "npm run build && node scripts/verify-packages.mjs",
+    "verify:release-version": "node scripts/verify-release-version.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1"
