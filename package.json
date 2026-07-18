@@ -1,6 +1,6 @@
 {
   "name": "dynt",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "description": "Independent formation and kinetic engines for framework-agnostic interfaces.",
   "license": "MIT",

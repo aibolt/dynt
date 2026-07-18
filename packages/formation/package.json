@@ -1,6 +1,6 @@
 {
   "name": "@dynt/formation",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Framework-independent, line-led UI formation engine.",
   "license": "MIT",
   "repository": {

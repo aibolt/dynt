@@ -1,6 +1,6 @@
 {
   "name": "@dynt/web-components",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Custom-element lifecycle helpers for DYNT engines.",
   "license": "MIT",
   "repository": {
@@ -52,8 +52,8 @@
     }
   },
   "devDependencies": {
-    "@dynt/formation": "0.5.0",
-    "@dynt/kinetic": "0.5.0",
+    "@dynt/formation": "0.5.1",
+    "@dynt/kinetic": "0.5.1",
     "happy-dom": "20.10.6",
     "typescript": "5.9.3"
   },
