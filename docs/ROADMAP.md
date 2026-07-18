@@ -82,16 +82,16 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 
 ## Phase 6 — Public release
 
-- [ ] Publish versioned packages.
+- [x] Publish versioned packages.
 - [x] Add migration, API, and integration documentation.
 - [x] Add examples for existing HTML and supported frameworks.
 - [x] Document reviewed outside-contribution and maintainer merge policies.
 
 ## External release operations
 
-- [ ] Configure owner access to the `@dynt` npm organization.
-- [ ] Configure the protected GitHub `npm` environment and npm trusted publishers.
-- [ ] Publish the `v0.5.0` tag after the preview candidate is merged.
+- [x] Configure owner access to the `@dynt` npm organization.
+- [x] Configure the tag-restricted GitHub `npm` environment and npm trusted publishers.
+- [x] Publish the `v0.5.0` tag and GitHub Release after the preview implementation is merged.
 
 ## Formation profile delivery
 

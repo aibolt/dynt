@@ -46,11 +46,11 @@ Formation, Kinetic, or both can be initialized at a layout boundary. Individual 
 
 ## Status
 
-Version `0.5.0` is a public-preview candidate. Its package tarballs, type declarations, exports, plain-HTML examples, framework adapters, cleanup behavior, performance budgets, and Chromium/Firefox/WebKit matrix are verified locally and in CI. Registry publication remains a deliberate tagged release after the `@dynt` npm scope is configured.
+Version `0.5.0` is the first public-preview release. All four packages are available from npm, and their registry integrities match the clean tarballs verified by the repository package gate. Type declarations, exports, plain-HTML examples, framework adapters, cleanup behavior, performance budgets, and the Chromium/Firefox/WebKit matrix are verified locally and in CI.
 
 ## Install
 
-After the packages are published, install only what the application uses:
+Install only what the application uses:
 
 ```bash
 npm install @dynt/formation

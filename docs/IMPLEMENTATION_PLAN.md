@@ -1,6 +1,6 @@
 # DYNT Implementation Plan
 
-Status: the `0.5.0` preview implementation and its local verification gates are complete. This document preserves the design contracts that shaped the implementation; [the roadmap](ROADMAP.md) records current delivery, and npm scope access remains the only external release operation.
+Status: the `0.5.0` preview implementation, verification gates, npm packages, and formal tagged release are complete. This document preserves the design contracts that shaped the implementation; [the roadmap](ROADMAP.md) records current delivery.
 
 ## 1. Product objective
 
@@ -390,7 +390,7 @@ Every implementation pull request must pass:
 
 ### 13.2 Package publishing
 
-Package manifests become publishable only after the license, names, exports, and preview criteria are approved. Registry publication still requires owner access to the npm scope.
+The approved package manifests produced the synchronized public `0.5.0` release. Later versions use the same clean-package gates and owner-controlled tagged workflow.
 
 Publishing will include:
 
@@ -410,7 +410,7 @@ Publishing will include:
 - `0.5.x` — First framework adapter and browser matrix.
 - `1.0.0` — Stable APIs, complete documentation, release automation, and satisfied quality gates.
 
-Version numbers describe intended maturity and may be adjusted before publishing.
+Version `0.5.0` established the first public preview. Later versions follow the repository's semantic-versioning policy.
 
 ## 14. Documentation and examples
 
@@ -574,7 +574,7 @@ Recorded decisions:
 - Security reporting: private GitHub security advisories.
 - Release procedure: synchronized `0.5.0` preview packages, tagged automation, clean-package verification, provenance, and immutable-version rollback.
 
-Owner access to the `@dynt` npm organization and the trusted-publisher configuration remain external release operations.
+Owner access to the `@dynt` npm organization, the tag-restricted GitHub environment, and the package trusted-publisher configuration are complete release operations.
 
 ## 18. Definition of done
 

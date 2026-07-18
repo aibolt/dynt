@@ -2,7 +2,7 @@
 
 All notable changes are recorded here. DYNT follows semantic versioning while the `0.x` line may still refine public APIs between minor releases.
 
-## 0.5.0 - 2026-07-17
+## 0.5.0 - 2026-07-18
 
 ### Added
 
@@ -16,4 +16,4 @@ All notable changes are recorded here. DYNT follows semantic versioning while th
 
 ### Migration
 
-This is the first public-preview candidate; there is no earlier DYNT package version to migrate from.
+This is the first public-preview release; there is no earlier DYNT package version to migrate from.
