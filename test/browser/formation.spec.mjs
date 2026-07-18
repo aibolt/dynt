@@ -14,8 +14,8 @@ test("Formation viewport flow travels from the window and stages targets", async
     });
   });
   await page.goto("/examples/formation-browser/");
-  const layer = page.locator("[data-dynt-formation-flow-layer]");
-  const firstFlight = layer.locator("[data-dynt-flow-target='section-target']");
+  const firstFlight = page.locator("[data-dynt-flow-target='section-target']");
+  const layer = page.locator("[data-dynt-formation-flow-layer]").filter({ has: firstFlight });
   const travellingLine = firstFlight.locator(".dynt-formation-flow-line--top");
   await expect(layer).toHaveAttribute("aria-hidden", "true");
   await expect(firstFlight).toHaveCount(1);
@@ -65,6 +65,20 @@ test("Formation lifecycle preserves controls, focus, input, and dynamic targets"
   await expect(status).toContainText("section-target:formed");
   await expect(status).toContainText("line-rise-target:formed");
   await expect(status).toContainText("arc-trace-target:formed");
+  for (const [profile, pattern, pathCount] of [
+    ["squircle-sweep", "squircle", 2],
+    ["chamfer-fold", "chamfer", 5],
+    ["magnetic-segment", "magnetic", 5],
+    ["radial-compass", "compass", 3],
+    ["aperture-iris", "aperture", 6],
+    ["elastic-membrane", "membrane", 4],
+  ]) {
+    const surface = page.locator(`#${profile}-target`);
+    await expect(surface).toHaveAttribute("data-dynt-formation-phase", "formed");
+    await expect(surface.locator(`[data-dynt-formation-pattern='${pattern}']`))
+      .toHaveAttribute("aria-hidden", "true");
+    await expect(surface.locator(".dynt-formation__construct-path")).toHaveCount(pathCount);
+  }
   const arcTrace = page.locator("#arc-trace-target");
   await expect(arcTrace.locator("[data-dynt-formation-perimeter]")).toHaveAttribute(
     "aria-hidden",
@@ -82,7 +96,9 @@ test("Formation lifecycle preserves controls, focus, input, and dynamic targets"
   const input = page.getByRole("textbox", { name: "Text input" });
   await input.fill("Preserved across browsers");
   await page.getByRole("button", { name: "Add target" }).click();
-  await expect(status).toContainText("dynamic-7:formed");
+  const dynamicTarget = page.locator("[id^='dynamic-']");
+  await expect(dynamicTarget).toHaveAttribute("data-dynt-formation-phase", "formed");
+  await expect(status).toContainText(await dynamicTarget.getAttribute("id"));
   await expect(input).toHaveValue("Preserved across browsers");
   await page.getByRole("link", { name: "Focusable link" }).focus();
   await expect(page.getByRole("link", { name: "Focusable link" })).toBeFocused();
