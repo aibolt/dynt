@@ -6,23 +6,25 @@ DYNT releases four public npm packages at one version: `@dynt/formation`, `@dynt
 
 1. The `@dynt` npm organization exists and the release owner has publish access.
 2. Every public package name in this repository belongs to that organization.
-3. The GitHub `npm` environment restricts deployment to trusted maintainers.
-4. After the first publish, each package trusts `aibolt/dynt`, workflow `release.yml`, environment `npm`, with `npm publish` permission.
+3. The GitHub `npm` environment restricts deployment to version tags.
+4. Each package trusts `aibolt/dynt`, workflow `release.yml`, environment `npm`, with `npm publish` permission.
 5. Trusted publishing uses a GitHub-hosted runner, Node 24 or newer, and npm 11.5.1 or newer.
 
-If the package names return no public registry version, creating or granting access to the npm organization is an external owner action; source changes cannot provide that authority.
+The `0.5.0` packages are public. A release owner can verify the synchronized registry version with `npm view` before preparing a later release.
 
-## First-release bootstrap
+## Trusted publishing
 
-Trusted publisher settings are attached to an existing npm package. For the first release only, create a narrowly scoped npm automation token that can publish public packages in `@dynt`, store it as the `NPM_TOKEN` secret on the protected GitHub `npm` environment, and run the tagged workflow below.
+Each package uses the same GitHub Actions trust policy:
 
-After all four packages exist:
+- Organization: `aibolt`
+- Repository: `dynt`
+- Workflow: `release.yml`
+- Environment: `npm`
+- Allowed action: `npm publish`
 
-1. Configure each package's trusted publisher with the values above.
-2. Restrict package publishing to require two-factor authentication and disallow traditional tokens.
-3. Delete the bootstrap `NPM_TOKEN` secret and revoke the token.
+The release workflow requests a short-lived OIDC credential and does not read a long-lived npm publish token. Keep package publishing access set to require two-factor authentication and disallow traditional tokens after the OIDC path has been exercised successfully.
 
-The release workflow keeps the secret optional. With trusted publishing configured, npm uses short-lived OIDC credentials and generates provenance.
+The initial package publication established the four package records. Future tagged releases use trusted publishing, and npm automatically generates provenance for public packages published from the public repository.
 
 ## Prepare a version
 
@@ -44,7 +46,7 @@ RELEASE_TAG=v0.5.0 npm run verify:release-version
 
 ## Publish
 
-Create and push an annotated tag matching the package version exactly, for example `v0.5.0`. The Release workflow repeats every verification gate and publishes each missing package version with public access and provenance.
+Create and push an annotated tag matching the package version exactly. The Release workflow repeats every verification gate and publishes each missing package version with public access and provenance.
 
 The publish script is restart-safe. If a job stops after publishing only some workspaces, rerun the same job; versions already present are verified and skipped, and only missing versions are published.
 
