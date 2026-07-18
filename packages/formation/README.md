@@ -6,7 +6,7 @@ Framework-independent, line-led construction and reversible formation lifecycle.
 npm install @dynt/formation
 ```
 
-Formation applies viewport-spanning flow lines, four-rail Line Forge construction, and single-stroke perimeter formation through one root-level initializer. Line Push, Line Rise, and Arc Trace select different geometry without changing the integration contract.
+Formation applies viewport-spanning flow lines, four-rail Line Forge construction, single-stroke perimeters, and responsive staged SVG constructions through one root-level initializer. All built-in profiles select different geometry without changing the integration contract.
 
 ```ts
 import { createFormation } from "@dynt/formation";
@@ -59,13 +59,19 @@ Repeated and nested controllers share one internal ownership record per element.
 
 ## Profiles
 
-Formation includes three independent profiles:
+Formation includes nine independent profiles:
 
 - `line-push` constructs horizontal edges before vertical edges.
 - `line-rise` constructs vertical edges before horizontal edges.
 - `arc-trace` draws one continuous rounded perimeter, leaves paired registers on opposite edges, and erases along the same path during withdrawal.
+- `squircle-sweep` draws a continuous superellipse with opposing registration marks.
+- `chamfer-fold` closes clipped edges from staged segments.
+- `magnetic-segment` pulls opposing edge segments toward four meeting points.
+- `radial-compass` locates the center before enclosing it with a rounded frame and cardinal marks.
+- `aperture-iris` locates the center before four curved edge sections close.
+- `elastic-membrane` stretches opposing curves into a bounded membrane frame.
 
-Line Push and Line Rise support optional viewport travel and corner overflow. Arc Trace owns an accessibility-hidden SVG perimeter, supports the `radius` token, and deliberately rejects viewport travel and overflow because neither belongs to its geometry.
+Line Push and Line Rise support optional viewport travel and directional edge overflow. Arc Trace owns an accessibility-hidden SVG perimeter, supports the `radius` token, and deliberately rejects viewport travel and overflow because neither belongs to its geometry. The six constructed profiles use an accessibility-hidden responsive SVG path layer and support viewport travel.
 
 The typed `createFormationProfileRegistry()` API accepts additional profile definitions without changing the engine. A definition declares its scoped CSS class, edge or perimeter geometry, supported tokens, transition completion hooks, rendering strategy, and reduced-motion and responsive capabilities. Pass the returned registry through `profiles` and select its profile by name.
 
@@ -77,7 +83,7 @@ Formation applies configuration in this order: profile CSS defaults, controller 
 
 Duration and overflow are expressed in milliseconds and pixels respectively. Colors, width, and easing accept non-empty CSS values. Line style accepts `solid`, `dashed`, `dotted`, or `double`. Destroying a controller restores the exact inline custom-property values and priorities that existed before Formation managed the target.
 
-When Kinetic is also present, the four rails join its bounded plate transform. Corner overflow contracts near the pointer and expands at the far edge while the application-owned host transform remains untouched.
+When Kinetic is also present, Formation geometry joins its bounded plate transform. Directional overflow contracts on the near side and expands at the far side while the application-owned host transform remains untouched.
 
 ## Viewport flow
 

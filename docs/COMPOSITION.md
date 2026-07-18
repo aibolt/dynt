@@ -8,7 +8,7 @@ Formation owns `data-dynt-formation-phase` and emits the bubbling `dynt:formatio
 
 Kinetic immediately returns an owned surface to rest during locating, construction, reveal, withdrawal, or deconstruction. When the surface reaches `formed`, normal pointer input resumes. This rule applies regardless of initialization order.
 
-Formation's transient viewport-flow overlay crosses the window without entering application targets; permanent geometry stays on host pseudo-elements at layer 1. Kinetic renders inside its accessibility-hidden canvas layer at layer 0. On a shared formed surface, tilt rotates the permanent rails and cell plate as one shallow assembly, shifts its shadow, compresses the near corner overflow, and extends the far corner. Optional content and drift remain local reactor channels. The application's host transform and nested surfaces remain untouched.
+Formation's transient viewport-flow overlay crosses the window without entering application targets; permanent geometry stays on host pseudo-elements or an accessibility-hidden SVG construction layer. Kinetic renders inside its accessibility-hidden canvas layer. On a shared formed surface, tilt rotates permanent geometry and the cell plate as one shallow assembly, shifts its shadow, compresses the near side, and extends the far side. Optional content and drift remain local reactor channels. The application's host transform and nested surfaces remain untouched.
 
 ## Cleanup
 

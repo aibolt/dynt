@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DYNT framework adapter verification</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="../../packages/formation/src/styles.css">
+    <link rel="stylesheet" href="../../packages/kinetic/src/styles.css">
+    <style>
+      :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+      body { background: #070b10; color: #e5f7f3; margin: 0; padding: 2rem; }
+      header { align-items: end; display: flex; justify-content: space-between; }
+      .examples { display: grid; gap: 1.5rem; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 2rem; }
+      .example-root { display: block; min-width: 0; }
+      .surface { --dynt-kinetic-color: #67e8f9; background: #0d1720; min-height: 13rem; padding: 1.25rem; }
+      .nested { background: #101f29; border: 1px solid #31505c; color: inherit; display: block; margin-top: 2rem; min-height: 4rem; width: 100%; }
+      button { font: inherit; }
+      @media (max-width: 800px) { .examples { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <p>FRAMEWORK PARITY</p>
+        <h1>One behavior contract, three hosts</h1>
+      </div>
+      <button id="cleanup" type="button">Destroy examples</button>
+    </header>
+    <main class="examples">
+      <section>
+        <h2>Plain DOM</h2>
+        <div id="plain-root" class="example-root">
+          <article id="plain-parent" class="surface">
+            <strong>DOM surface</strong>
+            <button id="plain-nested" class="surface nested" type="button">Owned action</button>
+          </article>
+        </div>
+      </section>
+      <section>
+        <h2>React</h2>
+        <div id="react-mount"></div>
+      </section>
+      <section>
+        <h2>Web Component</h2>
+        <div id="web-mount"></div>
+      </section>
+    </main>
+    <script type="module" src="./bundle.js"></script>
+  </body>
+</html>

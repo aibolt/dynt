@@ -199,7 +199,7 @@ function localColors(
     ?.getComputedStyle(element)
     .getPropertyValue("--dynt-kinetic-color")
     .trim();
-  const sources = configuration.colorMode === "single" && cssColor
+  const sources = cssColor
     ? [cssColor]
     : configuration.colors;
   return sources.map(parseColor).filter((color): color is Rgb => color !== null);

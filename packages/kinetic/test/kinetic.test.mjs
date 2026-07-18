@@ -236,7 +236,96 @@ test("built-in presets remain immutable and directly consumable by the core engi
 
   assert.equal(Object.isFrozen(kineticPresets.locator), true);
   assert.equal(kineticPresets.locator.cells.shape, "hexagon");
+  assert.deepEqual(Object.keys(kineticPresets), [
+    "structural",
+    "locator",
+    "laminar",
+    "material",
+    "tidal",
+    "impact",
+  ]);
+  assert.equal(Object.isFrozen(kineticPresets.tidal.flow), true);
+  assert.equal(kineticPresets.tidal.flow.multi, true);
+  assert.equal(kineticPresets.impact.cells.shape, "diamond");
   assert.equal(controller.elements.length, 1);
+  controller.destroy();
+});
+
+test("ordered selector groups resolve independent surface effects and geometry", () => {
+  const window = new Window();
+  installCanvasContext(window);
+  const frames = installAnimationFrames(window);
+  const document = window.document;
+  document.body.innerHTML = `
+    <main class="surface">
+      <article id="card" class="surface material">
+        <h2>Card</h2>
+        <button id="action" class="surface local"><span>Action</span></button>
+      </article>
+    </main>
+  `;
+  const main = document.querySelector("main");
+  const card = document.querySelector("#card");
+  const action = document.querySelector("#action");
+  const heading = document.querySelector("h2");
+  for (const surface of [main, card, action]) {
+    setRectangle(surface, { width: 240, height: 160 });
+  }
+
+  const controller = createKinetic({
+    root: main,
+    selector: ".surface",
+    cells: { shape: "square", size: [40, 32, 24] },
+    effects: { content: false, tilt: false, wave: true },
+    motion: { maxTilt: 8, response: 1, waveDuration: 100 },
+    groups: [
+      {
+        selector: ".material",
+        cells: { shape: "diamond", size: [36, 28, 20] },
+        effects: { content: true, tilt: true, wave: false },
+        motion: { maxTilt: 3 },
+      },
+      {
+        selector: ".local",
+        cells: { shape: "hexagon", size: 18 },
+        effects: { content: true, tilt: false, wave: true },
+      },
+    ],
+  });
+
+  const cardCanvas = card.querySelector(":scope > [data-dynt-kinetic-layer] canvas");
+  const actionCanvas = action.querySelector(":scope > [data-dynt-kinetic-layer] canvas");
+  assert.equal(cardCanvas.dataset.dyntCellShape, "diamond");
+  assert.equal(cardCanvas.dataset.dyntCellSize, "28");
+  assert.equal(actionCanvas.dataset.dyntCellShape, "hexagon");
+  assert.equal(actionCanvas.dataset.dyntCellSize, "18");
+  assert.equal(heading.classList.contains("dynt-kinetic__reactor"), true);
+
+  dispatchPointer(window, card, "pointermove", { clientX: 240, clientY: 80 });
+  frames.runNext();
+  assert.equal(card.style.getPropertyValue("--dynt-tilt-y"), "3.000deg");
+  dispatchPointer(window, card, "pointerdown", { clientX: 120, clientY: 80 });
+  frames.runNext();
+  assert.equal(cardCanvas.dataset.dyntFlowCells, "0");
+
+  dispatchPointer(window, action, "pointerdown", { clientX: 120, clientY: 80 });
+  frames.runNext();
+  assert.equal(action.style.getPropertyValue("--dynt-tilt-y"), "0.000deg");
+  assert.ok(Number(actionCanvas.dataset.dyntFlowCells) > 0);
+  assert.equal(cardCanvas.dataset.dyntFlowCells, "0");
+
+  controller.update({
+    groups: [{
+      selector: "#card",
+      cells: { shape: "circle", size: 22 },
+      effects: { tilt: true, wave: true },
+      motion: { maxTilt: 5 },
+    }],
+  });
+  assert.equal(cardCanvas.dataset.dyntCellShape, "circle");
+  assert.equal(cardCanvas.dataset.dyntCellSize, "22");
+  assert.equal(actionCanvas.dataset.dyntCellShape, "square");
+  assert.equal(actionCanvas.dataset.dyntCellSize, "24");
   controller.destroy();
 });
 
@@ -412,7 +501,7 @@ test("delegated pointer input writes bounded tilt then becomes idle", () => {
   controller.destroy();
 });
 
-test("corner tilt compresses the near overflow and raises the far edge", () => {
+test("directional tilt compresses the near overflow and raises the far edge", () => {
   const window = new Window();
   const frames = installAnimationFrames(window);
   const document = window.document;
@@ -946,4 +1035,25 @@ test("pause, resume, destroy, and input validation are idempotent", () => {
     }),
     /unknown flow option/,
   );
+  assert.throws(
+    () => createKinetic({ root: document, selector: "button", groups: {} }),
+    /groups must be an array/,
+  );
+  assert.throws(
+    () => createKinetic({
+      root: document,
+      selector: "button",
+      groups: [{ selector: "[", effects: { wave: true } }],
+    }),
+    /invalid group 1 selector/,
+  );
+  assert.throws(
+    () => createKinetic({
+      root: document,
+      selector: "button",
+      groups: [{ selector: "button", field: true }],
+    }),
+    /unknown group option: field/,
+  );
+  assert.equal(button.querySelector("[data-dynt-kinetic-layer]"), null);
 });

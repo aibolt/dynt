@@ -19,7 +19,7 @@ import "@dynt/formation/styles.css";
 | `root` | `Document \| DocumentFragment \| HTMLElement` | Required | Explicit enhancement boundary. Pass a `ShadowRoot` directly to manage that shadow tree. |
 | `selector` | `string` | Required | Targets inside the root, including the root itself when it matches. |
 | `exclude` | `string` | None | Additional subtree exclusion selector. `[data-dynt-ignore]` is always excluded. |
-| `profile` | `"line-push" \| "arc-trace" \| "line-rise" \| custom name` | `"line-push"` | Formation profile. |
+| `profile` | `FormationProfile \| custom name` | `"line-push"` | Formation profile. |
 | `profiles` | `FormationProfileRegistry` | Built-in registry | Registry used to resolve `profile`. |
 | `observe` | `boolean` | `false` | Reconcile matching DOM additions, removals, and relevant attribute changes. |
 | `viewportFlow` | `boolean \| FormationViewportFlow` | `false` | Send transient lines from the viewport boundaries before staging target rail construction. |
@@ -52,8 +52,14 @@ Phases are `unformed`, `locating`, `constructing`, `enclosed`, `revealing`, `for
 - `line-push` forges horizontal rails before vertical rails.
 - `arc-trace` draws one continuous rounded perimeter and leaves paired entry/exit registers on opposite edges.
 - `line-rise` forges vertical rails before horizontal rails.
+- `squircle-sweep` draws a continuous superellipse and opposing registration marks.
+- `chamfer-fold` closes clipped edges from staged segments.
+- `magnetic-segment` pulls opposing edge segments toward four meeting points.
+- `radial-compass` locates the center before enclosing it with a rounded frame and cardinal marks.
+- `aperture-iris` locates the center, then closes four curved edge sections.
+- `elastic-membrane` stretches opposing curves into a bounded membrane frame.
 
-Line Push and Line Rise use four complete Line Forge rails with optional viewport travel and corner overflow. Arc Trace uses an engine-owned SVG perimeter with a `620ms` default trace, a proportionally shorter reverse, an `18px` default radius, no viewport travel, and no overflow. All three use the same lifecycle, coordinated Kinetic plate tilt, and reversible cleanup contract.
+Line Push and Line Rise use four complete Line Forge rails with optional viewport travel and directional edge overflow. Arc Trace uses an engine-owned SVG perimeter with a `620ms` default trace, a proportionally shorter reverse, an `18px` default radius, no viewport travel, and no overflow. The six constructed profiles use responsive SVG path sets and support viewport travel. Every built-in uses the same lifecycle, coordinated Kinetic plate tilt, reverse choreography, reduced-motion behavior, and cleanup contract.
 
 `createFormationProfileRegistry(definitions)` creates an immutable, typed registry. Each definition declares a unique name, a `dynt-formation--` class, edge order, supported tokens, transition completion hooks, rendering mode, and capability metadata. A custom profile supplies its own scoped CSS for that class.
 
@@ -76,6 +82,7 @@ import "@dynt/kinetic/styles.css";
 | `effects` | `KineticEffects` | See below | Independent effect switches. |
 | `flow` | `KineticFlow` | See below | Circular turbulent wave behavior and budget. |
 | `motion` | `KineticMotion` | See below | Bounded motion settings. |
+| `groups` | `KineticGroup[]` | `[]` | Ordered selector-specific cells, effects, flow, and motion layers. |
 | `limits` | `KineticLimits` | See below | Rendering budgets. |
 
 Effect defaults are `tilt: true`, `content: false`, `drift: false`, and `wave: false`.
@@ -93,7 +100,11 @@ Effect defaults are `tilt: true`, `content: false`, `drift: false`, and `wave: f
 
 `cells.shape` accepts `square`, `hexagon`, `circle`, or `diamond`. `cells.size` accepts `8` to `120` pixels or a three-level size tree; the default is `[40, 32, 24]`. `cells.colorMode` accepts `single`, `bands`, or `gradient`, with one to eight values in `cells.colors`. Gap is `0` to `8` pixels and is automatically removed for connected hexagon and diamond lattices.
 
-The canvas stays clear during pointer movement. Clicks and `impact()` start a circular front whose distance timing is distorted by coherent turbulence. Wave flow exposes `speed`, `thickness`, `recovery`, `intensity`, `turbulence`, `turbulenceScale`, `growth`, `overflow`, `seed`, `seedLocked`, `multi`, `maxWaves`, and `maxCells`. Defaults use a size- and travel-aware 14-pixel terminal-overflow ceiling and a 420-cell budget. `kineticPresets.structural` and `kineticPresets.locator` provide immutable starting configurations.
+The canvas stays clear during pointer movement. Clicks and `impact()` start a circular front whose distance timing is distorted by coherent turbulence. Wave flow exposes `speed`, `thickness`, `recovery`, `intensity`, `turbulence`, `turbulenceScale`, `growth`, `overflow`, `seed`, `seedLocked`, `multi`, `maxWaves`, and `maxCells`. Defaults use a size- and travel-aware 14-pixel terminal-overflow ceiling and a 420-cell budget.
+
+Configuration begins with root-level `cells`, `effects`, `flow`, and `motion`, then applies every matching `groups` entry in array order. Target-local `data-dynt-cell-shape`, `data-dynt-cell-size`, `--dynt-cell-size`, and `--dynt-kinetic-color` values have final priority for the channels they control. Nested managed surfaces own their input and wave state independently; the deepest matching surface receives the event.
+
+The immutable `kineticPresets` collection provides six starting configurations: `structural`, `locator`, `laminar`, `material`, `tidal`, and `impact`. Spread a preset before root-specific values, then use groups for local variation.
 
 ### Kinetic controller
 
@@ -104,7 +115,7 @@ The canvas stays clear during pointer movement. Clicks and `impact()` start a ci
 | `pause()` | Stop input, cancel scheduled work, and return surfaces to rest. |
 | `resume()` | Resume input without rebuilding surfaces. |
 | `impact(target, input?)` | Trigger one bounded response on the active managed owner. |
-| `update({ cells?, effects?, flow?, motion?, limits? })` | Merge supplied settings into current configuration, rest surfaces, and reconcile limits. |
+| `update({ cells?, effects?, flow?, groups?, motion?, limits? })` | Merge supplied root settings, replace supplied groups, rest surfaces, and reconcile limits. |
 | `refresh()` | Reconcile current matches and return the number newly enhanced. |
 | `destroy()` | Remove owned listeners, observers, frames, timers, layers, markers, and styles. Idempotent. |
 
@@ -114,7 +125,7 @@ Impact input accepts `pressure` from `0` to `1` as wave-strength input and norma
 
 Kinetic writes these engine-owned custom properties on a managed host: `--dynt-pointer-x`, `--dynt-pointer-y`, `--dynt-tilt-x`, `--dynt-tilt-y`, `--dynt-shadow-x`, `--dynt-shadow-y`, `--dynt-tl-overflow`, `--dynt-tr-overflow`, `--dynt-bl-overflow`, `--dynt-br-overflow`, `--dynt-drift-x`, `--dynt-drift-y`, `--dynt-content-x`, `--dynt-content-y`, `--dynt-wave-x`, `--dynt-wave-y`, `--dynt-wave-scale`, and `--dynt-wave-opacity`.
 
-Applications can set `--dynt-cell-size` and `--dynt-kinetic-color`, or use `data-dynt-cell-shape` and `data-dynt-cell-size` for target-local geometry. Tilt moves the engine-owned cell plate and any shared Formation rails together, with differential corner overflow and an opposing shadow. When `effects.content` is enabled, Kinetic also identifies up to 48 semantic content groups per surface and moves them through the individual CSS `translate` property. The host transform and nested managed surfaces stay untouched. Mark a custom group with `data-dynt-reactor` when its markup has no semantic candidate. A wave applies a distance-timed lift, rebound, and settle sequence to the same locally owned reactors.
+Applications can set `--dynt-cell-size` and `--dynt-kinetic-color`, or use `data-dynt-cell-shape` and `data-dynt-cell-size` for target-local geometry. Tilt moves the engine-owned cell plate and any shared Formation rails together, with near-side compression, far-side expansion, and an opposing shadow. When `effects.content` is enabled, Kinetic also identifies up to 48 semantic content groups per surface and moves them through the individual CSS `translate` property. The host transform and nested managed surfaces stay untouched. Mark a custom group with `data-dynt-reactor` when its markup has no semantic candidate. A wave applies a distance-timed lift, rebound, and settle sequence to the same locally owned reactors.
 
 ## Coordination
 

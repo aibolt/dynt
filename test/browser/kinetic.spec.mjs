@@ -14,6 +14,9 @@ test("Kinetic routes input locally, pauses, resumes, and adopts dynamic targets"
   await expect.poll(() => nested.evaluate((element) => (
     Math.abs(Number.parseFloat(element.style.getPropertyValue("--dynt-tilt-y")))
   ))).toBeGreaterThan(0);
+  await expect.poll(() => nested.evaluate((element) => (
+    Math.abs(Number.parseFloat(element.style.getPropertyValue("--dynt-tilt-y")))
+  ))).toBeLessThanOrEqual(0.9);
   await expect(nested.locator("[data-dynt-kinetic-canvas]")).toHaveAttribute(
     "data-dynt-flow-cells",
     "0",
@@ -23,6 +26,12 @@ test("Kinetic routes input locally, pauses, resumes, and adopts dynamic targets"
     Math.abs(Number.parseFloat(element.style.getPropertyValue("--dynt-reactor-x")))
   ))).toBeGreaterThan(0);
   await expect(nested.locator("[data-dynt-kinetic-layer]")).not.toHaveCSS("transform", "none");
+
+  await nested.click({ position: { x: box.width * 0.35, y: box.height * 0.45 } });
+  await expect.poll(() => nested.locator("[data-dynt-kinetic-canvas]")
+    .getAttribute("data-dynt-flow-cells").then(Number)).toBeGreaterThan(0);
+  await expect(parent.locator(":scope > [data-dynt-kinetic-layer] canvas"))
+    .toHaveAttribute("data-dynt-flow-cells", "0");
 
   await page.getByRole("button", { name: "Pause" }).click();
   await expect(nested).toHaveCSS("--dynt-tilt-y", "0.000deg");
@@ -76,11 +85,10 @@ test("Kinetic preserves accessibility and accepts bounded pen input", async ({ p
       pointerType: "pen",
       pressure: 0.8,
     });
-    await page.waitForTimeout(32);
   }
   await expect.poll(() => nested.evaluate((element) => (
     Math.abs(Number.parseFloat(element.style.getPropertyValue("--dynt-tilt-y")))
-  ))).toBeLessThanOrEqual(1.35);
+  ))).toBeLessThanOrEqual(0.9);
 
   await nested.dispatchEvent("pointermove", {
     bubbles: true,
@@ -109,14 +117,12 @@ test("Kinetic renders circular turbulent waves in every cell geometry", async ({
   };
 
   await nested.dispatchEvent("pointermove", pointer);
-  await page.waitForTimeout(32);
   await expect(canvas).toHaveAttribute("data-dynt-cell-shape", "square");
   await expect(canvas).toHaveAttribute("data-dynt-cell-size", "32");
   await expect(canvas).toHaveAttribute("data-dynt-flow-cells", "0");
   await expect(canvas).not.toHaveAttribute("data-dynt-field-cells", /.+/);
 
   await nested.dispatchEvent("pointerdown", pointer);
-  await page.waitForTimeout(64);
   await expect.poll(() => canvas.getAttribute("data-dynt-flow-cells").then(Number)).toBeGreaterThan(0);
   await expect(canvas).toHaveAttribute("data-dynt-flow-model", "radial-turbulent");
   await expect.poll(() => nested.locator(".dynt-kinetic__reactor").evaluate((element) => (

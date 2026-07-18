@@ -20,6 +20,16 @@ export type FormationProfileDefinition<Name extends string = string> = Readonly<
       type: "perimeter";
       edgeOrder: "clockwise" | "counter-clockwise";
     }
+    | {
+      type: "constructed";
+      pattern:
+        | "aperture"
+        | "chamfer"
+        | "compass"
+        | "magnetic"
+        | "membrane"
+        | "squircle";
+    }
   >;
   tokens: readonly FormationTokenName[];
   lifecycle: Readonly<{
@@ -31,7 +41,7 @@ export type FormationProfileDefinition<Name extends string = string> = Readonly<
     responsive: boolean;
     viewportFlow?: boolean;
   }>;
-  rendering: "pseudo-elements" | "svg-perimeter";
+  rendering: "pseudo-elements" | "svg-construct" | "svg-perimeter";
 }>;
 
 export type FormationProfileRegistry<Name extends string = string> = Readonly<{
@@ -73,7 +83,17 @@ export function createFormationProfileRegistry<
         || profile.geometry.edgeOrder === "vertical-horizontal"
       )
       && profile.rendering === "pseudo-elements";
-    if (!perimeterGeometry && !edgeGeometry) {
+    const constructedGeometry = profile.geometry?.type === "constructed"
+      && [
+        "aperture",
+        "chamfer",
+        "compass",
+        "magnetic",
+        "membrane",
+        "squircle",
+      ].includes(profile.geometry.pattern)
+      && profile.rendering === "svg-construct";
+    if (!perimeterGeometry && !edgeGeometry && !constructedGeometry) {
       throw new TypeError("DYNT Formation profiles require supported geometry and rendering metadata.");
     }
     if (
@@ -227,6 +247,163 @@ const BUILTIN_PROFILES = [
       responsive: true,
     },
     rendering: "pseudo-elements",
+  },
+  {
+    name: "squircle-sweep",
+    className: "dynt-formation--squircle-sweep",
+    geometry: {
+      type: "constructed",
+      pattern: "squircle",
+    },
+    tokens: [
+      "duration",
+      "easing",
+      "fill-color",
+      "line-color",
+      "line-style",
+      "line-width",
+      "radius",
+    ],
+    lifecycle: {
+      formComplete: { propertyName: "stroke-dashoffset" },
+      withdrawComplete: { propertyName: "stroke-dashoffset" },
+    },
+    capabilities: {
+      reducedMotion: true,
+      responsive: true,
+      viewportFlow: true,
+    },
+    rendering: "svg-construct",
+  },
+  {
+    name: "chamfer-fold",
+    className: "dynt-formation--chamfer-fold",
+    geometry: {
+      type: "constructed",
+      pattern: "chamfer",
+    },
+    tokens: [
+      "duration",
+      "easing",
+      "fill-color",
+      "line-color",
+      "line-style",
+      "line-width",
+    ],
+    lifecycle: {
+      formComplete: { propertyName: "stroke-dashoffset" },
+      withdrawComplete: { propertyName: "stroke-dashoffset" },
+    },
+    capabilities: {
+      reducedMotion: true,
+      responsive: true,
+      viewportFlow: true,
+    },
+    rendering: "svg-construct",
+  },
+  {
+    name: "magnetic-segment",
+    className: "dynt-formation--magnetic-segment",
+    geometry: {
+      type: "constructed",
+      pattern: "magnetic",
+    },
+    tokens: [
+      "duration",
+      "easing",
+      "fill-color",
+      "line-color",
+      "line-style",
+      "line-width",
+    ],
+    lifecycle: {
+      formComplete: { propertyName: "stroke-dashoffset" },
+      withdrawComplete: { propertyName: "stroke-dashoffset" },
+    },
+    capabilities: {
+      reducedMotion: true,
+      responsive: true,
+      viewportFlow: true,
+    },
+    rendering: "svg-construct",
+  },
+  {
+    name: "radial-compass",
+    className: "dynt-formation--radial-compass",
+    geometry: {
+      type: "constructed",
+      pattern: "compass",
+    },
+    tokens: [
+      "duration",
+      "easing",
+      "fill-color",
+      "line-color",
+      "line-style",
+      "line-width",
+      "radius",
+    ],
+    lifecycle: {
+      formComplete: { propertyName: "stroke-dashoffset" },
+      withdrawComplete: { propertyName: "stroke-dashoffset" },
+    },
+    capabilities: {
+      reducedMotion: true,
+      responsive: true,
+      viewportFlow: true,
+    },
+    rendering: "svg-construct",
+  },
+  {
+    name: "aperture-iris",
+    className: "dynt-formation--aperture-iris",
+    geometry: {
+      type: "constructed",
+      pattern: "aperture",
+    },
+    tokens: [
+      "duration",
+      "easing",
+      "fill-color",
+      "line-color",
+      "line-width",
+    ],
+    lifecycle: {
+      formComplete: { propertyName: "stroke-dashoffset" },
+      withdrawComplete: { propertyName: "stroke-dashoffset" },
+    },
+    capabilities: {
+      reducedMotion: true,
+      responsive: true,
+      viewportFlow: true,
+    },
+    rendering: "svg-construct",
+  },
+  {
+    name: "elastic-membrane",
+    className: "dynt-formation--elastic-membrane",
+    geometry: {
+      type: "constructed",
+      pattern: "membrane",
+    },
+    tokens: [
+      "duration",
+      "easing",
+      "fill-color",
+      "line-color",
+      "line-width",
+      "radius",
+    ],
+    lifecycle: {
+      formComplete: { propertyName: "stroke-dashoffset" },
+      withdrawComplete: { propertyName: "stroke-dashoffset" },
+    },
+    capabilities: {
+      reducedMotion: true,
+      responsive: true,
+      viewportFlow: true,
+    },
+    rendering: "svg-construct",
   },
 ] as const satisfies readonly FormationProfileDefinition[];
 

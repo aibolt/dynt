@@ -64,10 +64,19 @@ export type KineticImpactInput = Readonly<{
   y?: number;
 }>;
 
+export type KineticGroup = Readonly<{
+  selector: string;
+  cells?: KineticCells;
+  effects?: KineticEffects;
+  flow?: KineticFlow;
+  motion?: KineticMotion;
+}>;
+
 export type KineticUpdateOptions = Readonly<{
   cells?: KineticCells;
   effects?: KineticEffects;
   flow?: KineticFlow;
+  groups?: readonly KineticGroup[];
   limits?: KineticLimits;
   motion?: KineticMotion;
 }>;
@@ -80,6 +89,7 @@ export type KineticOptions = Readonly<{
   cells?: KineticCells;
   effects?: KineticEffects;
   flow?: KineticFlow;
+  groups?: readonly KineticGroup[];
   limits?: KineticLimits;
   motion?: KineticMotion;
 }>;
@@ -114,8 +124,17 @@ type KineticConfiguration = Readonly<{
 
 type KineticOwner = {
   configuration: KineticConfiguration;
+  groups: readonly NormalizedKineticGroup[];
   root: KineticRoot;
 };
+
+type NormalizedKineticGroup = Readonly<{
+  selector: string;
+  cells?: KineticCells;
+  effects?: KineticEffects;
+  flow?: KineticFlow;
+  motion?: KineticMotion;
+}>;
 
 type MotionProperty =
   | "content-x"
@@ -187,6 +206,7 @@ type ElementOwnership = {
   element: HTMLElement;
   layer: HTMLElement | null;
   owners: Set<KineticOwner>;
+  ownerConfigurations: Map<KineticOwner, KineticConfiguration>;
   reactors: Map<HTMLElement, ReactorSnapshot>;
   snapshot: ElementSnapshot;
   state: MotionState;
@@ -590,6 +610,80 @@ function validateSelector(root: KineticRoot, selector: string, label: string) {
   }
 }
 
+function freezeCells(cells: KineticCells | undefined) {
+  if (cells === undefined) return undefined;
+  return Object.freeze({
+    ...cells,
+    colors: cells.colors === undefined ? undefined : Object.freeze([...cells.colors]),
+    size: Array.isArray(cells.size) ? Object.freeze([...cells.size]) : cells.size,
+  }) as KineticCells;
+}
+
+function normalizeSelectorGroups(
+  root: KineticRoot,
+  groups: readonly KineticGroup[] | undefined,
+): readonly NormalizedKineticGroup[] {
+  if (groups === undefined) return [];
+  if (!Array.isArray(groups)) {
+    throw new TypeError("DYNT Kinetic groups must be an array.");
+  }
+
+  return Object.freeze(groups.map((group, index) => {
+    if (!group || typeof group !== "object" || Array.isArray(group)) {
+      throw new TypeError("DYNT Kinetic groups must contain objects.");
+    }
+    for (const name of Object.keys(group)) {
+      if (
+        name !== "selector"
+        && name !== "cells"
+        && name !== "effects"
+        && name !== "flow"
+        && name !== "motion"
+      ) {
+        throw new TypeError(`DYNT Kinetic received an unknown group option: ${name}.`);
+      }
+    }
+    if (typeof group.selector !== "string" || !group.selector.trim()) {
+      throw new TypeError("DYNT Kinetic groups require a non-empty selector.");
+    }
+    validateSelector(root, group.selector, `group ${index + 1}`);
+    normalizeConfiguration(
+      group.effects,
+      group.motion,
+      undefined,
+      group.cells,
+      group.flow,
+    );
+    return Object.freeze({
+      selector: group.selector,
+      cells: freezeCells(group.cells),
+      effects: group.effects === undefined ? undefined : Object.freeze({ ...group.effects }),
+      flow: group.flow === undefined ? undefined : Object.freeze({ ...group.flow }),
+      motion: group.motion === undefined ? undefined : Object.freeze({ ...group.motion }),
+    });
+  }));
+}
+
+function resolveConfiguration(
+  element: HTMLElement,
+  base: KineticConfiguration,
+  groups: readonly NormalizedKineticGroup[],
+) {
+  let configuration = base;
+  for (const group of groups) {
+    if (!element.matches(group.selector)) continue;
+    configuration = normalizeConfiguration(
+      group.effects,
+      group.motion,
+      undefined,
+      group.cells,
+      group.flow,
+      configuration,
+    );
+  }
+  return configuration;
+}
+
 function snapshotMotionStyles(element: HTMLElement) {
   return Object.fromEntries(
     Object.entries(MOTION_PROPERTIES).map(([name, property]) => [
@@ -680,8 +774,15 @@ function cancelReactorAnimation(ownership: ElementOwnership, reactor: HTMLElemen
   ownership.waveAnimations.delete(reactor);
 }
 
+function activeConfiguration(ownership: ElementOwnership) {
+  const owner = ownership.activeOwner;
+  return owner
+    ? ownership.ownerConfigurations.get(owner) ?? owner.configuration
+    : DEFAULT_CONFIGURATION;
+}
+
 function syncReactors(ownership: ElementOwnership) {
-  const desired = ownership.activeOwner?.configuration.content
+  const desired = activeConfiguration(ownership).content
     ? new Set(findReactors(ownership.element))
     : new Set<HTMLElement>();
 
@@ -718,7 +819,7 @@ function cornerOverflow(x: number, y: number, cornerX: number, cornerY: number, 
 
 function writeMotionState(ownership: ElementOwnership) {
   const { element, state } = ownership;
-  const configuration = ownership.activeOwner?.configuration ?? DEFAULT_CONFIGURATION;
+  const configuration = activeConfiguration(ownership);
   setMotionProperty(element, "pointer-x", `${((state.current.x + 1) * 50).toFixed(2)}%`);
   setMotionProperty(element, "pointer-y", `${((state.current.y + 1) * 50).toFixed(2)}%`);
 
@@ -894,6 +995,7 @@ export function createKinetic({
   cells,
   effects,
   flow,
+  groups,
   limits,
   motion,
   ...unknownOptions
@@ -918,8 +1020,9 @@ export function createKinetic({
   validateSelector(root, selector, "target");
   validateSelector(root, excludeSelector, "exclude");
   const configuration = normalizeConfiguration(effects, motion, limits, cells, flow);
+  const selectorGroups = normalizeSelectorGroups(root, groups);
   const elements = new Set<HTMLElement>();
-  const owner: KineticOwner = { configuration, root };
+  const owner: KineticOwner = { configuration, groups: selectorGroups, root };
   const document = root.nodeType === 9 ? root as Document : root.ownerDocument;
   const view = document?.defaultView;
   const observerOptions: MutationObserverInit = {
@@ -963,7 +1066,8 @@ export function createKinetic({
 
       const { state } = ownership;
       const { current, target } = state;
-      const { response } = owner.configuration;
+      const configuration = activeConfiguration(ownership);
+      const { response } = configuration;
 
       if (state.impactStartedAt !== null) {
         if (state.impactStartedAt < 0) state.impactStartedAt = timestamp;
@@ -976,7 +1080,7 @@ export function createKinetic({
         if (flowState.startedAt < 0) flowState.startedAt = timestamp;
         flowState.progress = clamp(
           (timestamp - flowState.startedAt)
-            / (owner.configuration.waveDuration / owner.configuration.flow.speed),
+            / (configuration.waveDuration / configuration.flow.speed),
           0,
           1,
         );
@@ -988,12 +1092,12 @@ export function createKinetic({
       state.waveX = latestFlow?.x ?? state.waveX;
       state.waveY = latestFlow?.y ?? state.waveY;
 
-      const driftActive = owner.configuration.drift
+      const driftActive = configuration.drift
         && activeElement === ownership.element;
       if (driftActive) {
         const phase = timestamp / 700;
-        state.driftX = Math.sin(phase) * owner.configuration.driftAmount;
-        state.driftY = Math.cos(phase * 0.83) * owner.configuration.driftAmount;
+        state.driftX = Math.sin(phase) * configuration.driftAmount;
+        state.driftY = Math.cos(phase * 0.83) * configuration.driftAmount;
       } else {
         state.driftX += (0 - state.driftX) * response;
         state.driftY += (0 - state.driftY) * response;
@@ -1028,8 +1132,9 @@ export function createKinetic({
     if (prefersReducedMotion() || !view?.requestAnimationFrame) {
       activeStates.delete(ownership);
       if (activeStates.size === 0) cancelFrame();
-      ownership.state.current.x = owner.configuration.tilt ? 0 : ownership.state.target.x;
-      ownership.state.current.y = owner.configuration.tilt ? 0 : ownership.state.target.y;
+      const configuration = activeConfiguration(ownership);
+      ownership.state.current.x = configuration.tilt ? 0 : ownership.state.target.x;
+      ownership.state.current.y = configuration.tilt ? 0 : ownership.state.target.y;
       writeMotionState(ownership);
       return;
     }
@@ -1096,26 +1201,28 @@ export function createKinetic({
     if (rectangle.width <= 0 || rectangle.height <= 0) return;
     const x = clamp(((event.clientX - rectangle.left) / rectangle.width) * 2 - 1, -1, 1);
     const y = clamp(((event.clientY - rectangle.top) / rectangle.height) * 2 - 1, -1, 1);
+    const configuration = activeConfiguration(ownership);
     ownership.state.target = {
-      x: owner.configuration.tilt ? x : 0,
-      y: owner.configuration.tilt ? y : 0,
+      x: configuration.tilt ? x : 0,
+      y: configuration.tilt ? y : 0,
     };
     scheduleMotion(ownership);
   }
 
   function startWave(ownership: ElementOwnership, strength = 1) {
-    if (!owner.configuration.wave || prefersReducedMotion()) return;
+    const configuration = activeConfiguration(ownership);
+    if (!configuration.wave || prefersReducedMotion()) return;
     const nextFlow: MotionFlow = {
       progress: 0,
-      seed: owner.configuration.flow.seed
-        + (owner.configuration.flow.seedLocked ? 0 : ++waveIdentifier * 97),
+      seed: configuration.flow.seed
+        + (configuration.flow.seedLocked ? 0 : ++waveIdentifier * 97),
       startedAt: -1,
       strength,
       x: ownership.state.target.x,
       y: ownership.state.target.y,
     };
-    ownership.state.flows = owner.configuration.flow.multi
-      ? [...ownership.state.flows, nextFlow].slice(-owner.configuration.flow.maxWaves)
+    ownership.state.flows = configuration.flow.multi
+      ? [...ownership.state.flows, nextFlow].slice(-configuration.flow.maxWaves)
       : [nextFlow];
     ownership.state.waveX = nextFlow.x;
     ownership.state.waveY = nextFlow.y;
@@ -1126,7 +1233,7 @@ export function createKinetic({
   }
 
   function emitContentWave(ownership: ElementOwnership, strength: number) {
-    const configuration = owner.configuration;
+    const configuration = activeConfiguration(ownership);
     if (!configuration.content || configuration.contentLift <= 0) return;
     const surfaceBounds = ownership.element.getBoundingClientRect();
     if (surfaceBounds.width <= 0 || surfaceBounds.height <= 0) return;
@@ -1272,17 +1379,23 @@ export function createKinetic({
     }
   }
 
-  function enhance(element: HTMLElement) {
+  function enhance(element: HTMLElement, configuration: KineticConfiguration) {
     if (elements.has(element)) {
       const ownership = ELEMENT_OWNERSHIP.get(element);
-      if (ownership) ensureLayer(element, ownership);
+      if (ownership) {
+        ownership.ownerConfigurations.set(owner, configuration);
+        syncReactors(ownership);
+        ensureLayer(element, ownership);
+      }
       return false;
     }
 
     const existingOwnership = ELEMENT_OWNERSHIP.get(element);
     if (existingOwnership) {
       existingOwnership.owners.add(owner);
+      existingOwnership.ownerConfigurations.set(owner, configuration);
       existingOwnership.activeOwner = selectActiveOwner(existingOwnership.owners);
+      syncReactors(existingOwnership);
       resetMotionState(existingOwnership);
       ensureLayer(element, existingOwnership);
       elements.add(element);
@@ -1295,6 +1408,7 @@ export function createKinetic({
       element,
       layer: null,
       owners: new Set([owner]),
+      ownerConfigurations: new Map([[owner, configuration]]),
       reactors: new Map(),
       snapshot: {
         hadBaseClass: element.classList.contains(BASE_CLASS),
@@ -1338,6 +1452,7 @@ export function createKinetic({
     if (!ownership) return;
 
     ownership.owners.delete(owner);
+    ownership.ownerConfigurations.delete(owner);
     activeStates.delete(ownership);
     if (ownership.owners.size > 0) {
       ownership.activeOwner = selectActiveOwner(ownership.owners);
@@ -1360,12 +1475,20 @@ export function createKinetic({
       const targets = findTargets(root, selector, excludeSelector)
         .slice(0, owner.configuration.maxSurfaces);
       const targetSet = new Set(targets);
+      const configurations = new Map(
+        targets.map((element) => [
+          element,
+          resolveConfiguration(element, owner.configuration, owner.groups),
+        ]),
+      );
 
       for (const element of elements) {
         if (!targetSet.has(element)) release(element);
       }
       for (const element of targets) {
-        if (enhance(element)) enhancedCount += 1;
+        if (enhance(element, configurations.get(element) ?? owner.configuration)) {
+          enhancedCount += 1;
+        }
       }
       for (const element of targets) {
         const ownership = ELEMENT_OWNERSHIP.get(element);
@@ -1417,6 +1540,7 @@ export function createKinetic({
         name !== "cells"
         && name !== "effects"
         && name !== "flow"
+        && name !== "groups"
         && name !== "limits"
         && name !== "motion"
       ) {
@@ -1424,7 +1548,7 @@ export function createKinetic({
       }
     }
 
-    owner.configuration = normalizeConfiguration(
+    const nextConfiguration = normalizeConfiguration(
       options.effects,
       options.motion,
       options.limits,
@@ -1432,6 +1556,11 @@ export function createKinetic({
       options.flow,
       owner.configuration,
     );
+    const nextGroups = options.groups === undefined
+      ? owner.groups
+      : normalizeSelectorGroups(root, options.groups);
+    owner.configuration = nextConfiguration;
+    owner.groups = nextGroups;
     stopMotion();
     refresh();
   }

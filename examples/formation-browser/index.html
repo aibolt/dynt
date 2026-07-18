@@ -72,18 +72,18 @@
     </div>
 
     <main id="app">
-      <section id="section-target" class="target">
+      <section id="section-target" class="target line-push-target">
         <h2>Section surface</h2>
         <p>The host section remains structurally unchanged.</p>
       </section>
 
       <nav aria-label="Verification links">
-        <a id="link-target" class="target" href="#verified">Focusable link</a>
+        <a id="link-target" class="target line-push-target" href="#verified">Focusable link</a>
       </nav>
 
-      <button id="button-target" class="target" type="button">Focusable button</button>
+      <button id="button-target" class="target line-push-target" type="button">Focusable button</button>
 
-      <label class="target" for="input-target">
+      <label class="target line-push-target" for="input-target">
         Text input
         <input id="input-target" type="text" value="Editable value">
       </label>
@@ -94,6 +94,30 @@
 
       <article id="arc-trace-target" class="target arc-trace-target">
         Arc Trace surface
+      </article>
+
+      <article id="squircle-sweep-target" class="target squircle-sweep-target">
+        Squircle Sweep surface
+      </article>
+
+      <article id="chamfer-fold-target" class="target chamfer-fold-target">
+        Chamfer Fold surface
+      </article>
+
+      <article id="magnetic-segment-target" class="target magnetic-segment-target">
+        Magnetic Segment surface
+      </article>
+
+      <article id="radial-compass-target" class="target radial-compass-target">
+        Radial Compass surface
+      </article>
+
+      <article id="aperture-iris-target" class="target aperture-iris-target">
+        Aperture Iris surface
+      </article>
+
+      <article id="elastic-membrane-target" class="target elastic-membrane-target">
+        Elastic Membrane surface
       </article>
     </main>
 
@@ -106,7 +130,7 @@
       const status = document.querySelector("#status");
       const linePush = createFormation({
         root: app,
-        selector: ".target:not(.line-rise-target):not(.arc-trace-target)",
+        selector: ".line-push-target",
         observe: true,
         viewportFlow: {
           duration: 820,
@@ -152,7 +176,32 @@
           radius: "18px",
         },
       });
-      const formations = [linePush, lineRise, arcTrace];
+      const constructedProfiles = [
+        ["squircle-sweep", "#7dd3fc"],
+        ["chamfer-fold", "#fb7185"],
+        ["magnetic-segment", "#c4b5fd"],
+        ["radial-compass", "#fde047"],
+        ["aperture-iris", "#f9a8d4"],
+        ["elastic-membrane", "#86efac"],
+      ].map(([profile, lineColor]) => createFormation({
+        root: app,
+        selector: `.${profile}-target`,
+        profile,
+        observe: true,
+        viewportFlow: {
+          duration: 520,
+          lineLength: 520,
+          overrun: 32,
+          stagger: 0,
+        },
+        tokens: {
+          duration: 260,
+          fillColor: "rgb(8 24 32 / 0.92)",
+          lineColor,
+          lineWidth: "1px",
+        },
+      }));
+      const formations = [linePush, lineRise, arcTrace, ...constructedProfiles];
 
       function renderStatus() {
         status.textContent = formations
@@ -178,7 +227,7 @@
       document.querySelector("#add-target").addEventListener("click", () => {
         const article = document.createElement("article");
         article.id = `dynamic-${formations.flatMap((formation) => formation.elements).length + 1}`;
-        article.className = "target";
+        article.className = "target line-push-target";
         article.textContent = "Dynamically observed article";
         app.append(article);
         afterTransition();

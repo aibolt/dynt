@@ -9,24 +9,27 @@ DYNT adds constructed geometry and physical response to an existing interface fr
 The two engines are independent:
 
 - `@dynt/formation` — four-rail Line Forge and single-stroke perimeter construction with reversible deconstruction.
-- `@dynt/kinetic` — corner-coupled tilt, circular turbulent cell waves, drift, impact, and content response.
+- `@dynt/kinetic` — directional tilt, circular turbulent cell waves, drift, impact, and content response.
 
 Install either engine by itself, combine them through their DOM coordination contract, or use the thin React and Web Component integrations.
 
 ## See DYNT in one screen
 
-![DYNT showing corner-coupled tilt, an active circular turbulent cell wave, and Arc Trace perimeter construction](docs/assets/dynt-showcase.png)
+![DYNT parity laboratory showing separate Tilt and Wave sections, nested ownership, and configurable cell geometry](docs/assets/dynt-parity-lab.png)
 
-This local integration lab uses ordinary semantic HTML with the packages from this repository. Pointer movement drives the bounded corner tilt, an impact launches the circular turbulent cell front, and Arc Trace owns one reversible perimeter stroke.
+The parity laboratory uses ordinary semantic HTML and one root-level Kinetic controller. Tilt and Wave are shown separately, nested surfaces resolve their own selector-group settings, and dynamically inserted targets are adopted without component-level integration.
+
+[Watch the short motion proof](docs/assets/dynt-parity-lab.webm) showing directional tilt, a turbulent wave, button-owned geometry, withdrawal, and reverse formation.
 
 ## What the current preview includes
 
 - **Formation drama:** transient lines travel from the viewport boundaries, acquire targets in sequence, and reverse that order during withdrawal.
-- **Three formation profiles:** Line Push, Line Rise, and the continuous rounded Arc Trace perimeter.
-- **Physical response:** corner-coupled plate tilt moves the constructed frame and nearby semantic content through one restrained depth model.
+- **Nine formation profiles:** Line Push, Line Rise, Arc Trace, Squircle Sweep, Chamfer Fold, Magnetic Segment, Radial Compass, Aperture Iris, and Elastic Membrane.
+- **Physical response:** directional plate tilt compresses the near side, opens the far side, and moves the constructed frame and locally owned content through one restrained depth model.
 - **Circular turbulent waves:** click or controlled impact creates a radial, turbulence-distorted front with configurable speed, thickness, recovery, intensity, and cell sizing.
 - **Real cell geometry:** square, connected hexagon, circle, and interlocked diamond renderers, with a three-level size tree for nested surfaces.
-- **Framework-independent adoption:** one explicit root and selector can enhance existing and dynamically inserted elements; React and Web Component packages remain thin lifecycle adapters.
+- **Selector-group configuration:** ordered local groups override root Kinetic settings for sections, cards, nested surfaces, and controls while deepest-target ownership keeps responses isolated.
+- **Framework-independent adoption:** one explicit root and selector can enhance existing and dynamically inserted elements; the plain DOM, React, and Web Component examples run the same engines and configuration model.
 
 ## One application boundary
 
@@ -84,6 +87,10 @@ const kinetic = createKinetic({
   root: document.querySelector("#app"),
   selector: "section, article, button, [data-surface]",
   observe: true,
+  groups: [
+    { selector: "article", cells: { size: 32 }, motion: { maxTilt: 1.1 } },
+    { selector: "button", cells: { shape: "hexagon", size: 22 }, motion: { maxTilt: 0.8 } },
+  ],
 });
 ```
 
@@ -93,19 +100,19 @@ The root and selector are always explicit. Matching elements added later are ado
 
 | Package | Purpose | Requires the other engine |
 | --- | --- | --- |
-| `@dynt/formation` | Viewport flow lines, Line Forge rails, Arc Trace, lifecycle, profiles, and tokens | No |
+| `@dynt/formation` | Viewport flow lines, Line Forge rails, responsive SVG constructions, lifecycle, profiles, and tokens | No |
 | `@dynt/kinetic` | Cell geometry, circular turbulent waves, tilt, drift, impact, and content channels | No |
 | `@dynt/react` | Independent React hooks for either engine | No; engines are optional peers |
 | `@dynt/web-components` | Independent custom-element helpers for either engine | No; engines are optional peers |
 
 ## Quality gates
 
-- 49 Formation unit, DOM, profile, lifecycle, bidirectional viewport-flow, shadow-root, and performance checks.
-- 30 Kinetic unit, DOM, input, geometry, semantic-content, wave, shadow-root, and performance checks.
-- 6 adapter checks across React and Web Components.
-- 2 composition checks covering initialization and cleanup order.
-- 28 passing browser checks plus two intentional visual-test skips across Chromium, Firefox, and WebKit.
-- Clean tarball installation and import verification for all four public packages.
+- Formation unit, DOM, profile, lifecycle, bidirectional viewport-flow, shadow-root, responsive-renderer, and performance checks.
+- Kinetic unit, DOM, selector-group, input, geometry, semantic-content, wave, ownership, shadow-root, and performance checks.
+- React and Web Component lifecycle checks, plus a browser example proving configuration parity with plain DOM.
+- Composition checks covering independent installation, coordination, nested ownership, and cleanup order.
+- Chromium, Firefox, and WebKit browser verification without fixed-delay assertions.
+- Clean tarball installation and browser verification for all four public packages.
 - High-severity dependency audit and reproducible release workflow.
 
 Run the full local verification:
@@ -117,7 +124,7 @@ npm run test:packages
 npm audit --audit-level=high
 ```
 
-See the [API reference](docs/API.md), [accessibility contract](docs/ACCESSIBILITY.md), [combined-operation guide](docs/COMPOSITION.md), [performance budgets](docs/PERFORMANCE.md), [troubleshooting guide](docs/TROUBLESHOOTING.md), [architecture](docs/ARCHITECTURE.md), and [roadmap](docs/ROADMAP.md). Maintainers can use the [release and rollback guide](docs/RELEASING.md); vulnerabilities follow the [security policy](SECURITY.md).
+Explore the [Formation gallery](examples/formation-browser), [Kinetic laboratory](examples/kinetic-browser), and [plain DOM, React, and Web Component comparison](examples/framework-browser). See the [API reference](docs/API.md), [accessibility contract](docs/ACCESSIBILITY.md), [combined-operation guide](docs/COMPOSITION.md), [performance budgets](docs/PERFORMANCE.md), [troubleshooting guide](docs/TROUBLESHOOTING.md), [architecture](docs/ARCHITECTURE.md), and [roadmap](docs/ROADMAP.md). Maintainers can use the [release and rollback guide](docs/RELEASING.md); vulnerabilities follow the [security policy](SECURITY.md).
 
 ## License
 
