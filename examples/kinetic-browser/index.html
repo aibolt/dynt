@@ -101,6 +101,16 @@
         selector: ".surface",
         observe: true,
         ...kineticPresets.structural,
+        groups: [
+          {
+            selector: "#parent-surface",
+            motion: { maxTilt: 1.8 },
+          },
+          {
+            selector: "#nested-surface",
+            motion: { maxTilt: 0.9 },
+          },
+        ],
         flow: {
           ...kineticPresets.structural.flow,
           multi: true,
