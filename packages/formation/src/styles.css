@@ -355,6 +355,10 @@
   opacity: 0;
 }
 
+:where(.dynt-formation[data-dynt-formation-phase="formed"]) > :where(.dynt-formation__construct) :where(.dynt-formation__construct-path) {
+  stroke-dasharray: none;
+}
+
 :where(.dynt-formation[data-dynt-formation-phase="deconstructing"]) > :where(.dynt-formation__construct) {
   background-color: transparent;
 }

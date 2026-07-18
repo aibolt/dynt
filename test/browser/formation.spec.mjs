@@ -78,6 +78,8 @@ test("Formation lifecycle preserves controls, focus, input, and dynamic targets"
     await expect(surface.locator(`[data-dynt-formation-pattern='${pattern}']`))
       .toHaveAttribute("aria-hidden", "true");
     await expect(surface.locator(".dynt-formation__construct-path")).toHaveCount(pathCount);
+    await expect(surface.locator(".dynt-formation__construct-path").last())
+      .toHaveCSS("stroke-dasharray", "none");
   }
   const arcTrace = page.locator("#arc-trace-target");
   await expect(arcTrace.locator("[data-dynt-formation-perimeter]")).toHaveAttribute(

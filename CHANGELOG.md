@@ -2,6 +2,16 @@
 
 All notable changes are recorded here. DYNT follows semantic versioning while the `0.x` line may still refine public APIs between minor releases.
 
+## 0.5.1 - 2026-07-19
+
+### Fixed
+
+- Constructed Formation profiles now settle from their animated dash paths into clean, continuous resting geometry instead of retaining broken-looking construction segments.
+
+### Migration
+
+No API changes are required.
+
 ## 0.5.0 - 2026-07-18
 
 ### Added
