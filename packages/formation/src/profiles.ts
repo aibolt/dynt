@@ -275,6 +275,32 @@ const BUILTIN_PROFILES = [
     },
     rendering: "svg-construct",
   },
+  {
+    name: "chamfer-fold",
+    className: "dynt-formation--chamfer-fold",
+    geometry: {
+      type: "constructed",
+      pattern: "chamfer",
+    },
+    tokens: [
+      "duration",
+      "easing",
+      "fill-color",
+      "line-color",
+      "line-style",
+      "line-width",
+    ],
+    lifecycle: {
+      formComplete: { propertyName: "stroke-dashoffset" },
+      withdrawComplete: { propertyName: "stroke-dashoffset" },
+    },
+    capabilities: {
+      reducedMotion: true,
+      responsive: true,
+      viewportFlow: true,
+    },
+    rendering: "svg-construct",
+  },
 ] as const satisfies readonly FormationProfileDefinition[];
 
 export type FormationProfile = typeof BUILTIN_PROFILES[number]["name"];

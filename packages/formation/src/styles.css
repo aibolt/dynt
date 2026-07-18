@@ -293,6 +293,10 @@
   clip-path: polygon(12% 0, 88% 0, 100% 12%, 100% 88%, 88% 100%, 12% 100%, 0 88%, 0 12%);
 }
 
+:where(.dynt-formation--chamfer-fold) {
+  --dynt-formation-duration: 660ms;
+}
+
 :where(.dynt-formation--squircle-sweep .dynt-formation__construct) {
   border-radius: var(--dynt-formation-radius);
 }

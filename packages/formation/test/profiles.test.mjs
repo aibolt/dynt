@@ -78,6 +78,7 @@ test("default registry exposes independently described profiles", () => {
     "arc-trace",
     "line-rise",
     "squircle-sweep",
+    "chamfer-fold",
   ]);
   assert.equal(
     defaultFormationProfiles.get("line-push").geometry.type,
@@ -107,6 +108,7 @@ test("default registry exposes independently described profiles", () => {
   assert.equal(defaultFormationProfiles.get("arc-trace").rendering, "svg-perimeter");
   assert.equal(defaultFormationProfiles.get("arc-trace").capabilities.viewportFlow, false);
   assert.equal(defaultFormationProfiles.get("squircle-sweep").geometry.pattern, "squircle");
+  assert.equal(defaultFormationProfiles.get("chamfer-fold").geometry.pattern, "chamfer");
 });
 
 test("Squircle Sweep forms and withdraws its vertical shell", () => {
@@ -128,6 +130,32 @@ test("Squircle Sweep forms and withdraws its vertical shell", () => {
   assert.equal(article.dataset.dyntFormationPhase, "formed");
   controller.withdraw(article);
   dispatchStrokeTransition(window, completion);
+  assert.equal(article.dataset.dyntFormationPhase, "unformed");
+  controller.destroy();
+});
+
+test("Chamfer Fold constructs corner joints before its straight rails", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><article>Article</article></main>";
+  const article = document.querySelector("article");
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "article",
+    profile: "chamfer-fold",
+  });
+  const layer = article.querySelector("[data-dynt-formation-pattern='chamfer']");
+  const paths = layer.querySelectorAll("path");
+
+  assert.equal(paths.length, 5);
+  assert.match(paths[0].getAttribute("d"), /M0 12 L12 0/);
+  assert.equal(paths[0].style.getPropertyValue("--dynt-construct-delay"), "0ms");
+  assert.equal(paths[1].style.getPropertyValue("--dynt-construct-delay"), "90ms");
+  controller.form(article);
+  dispatchStrokeTransition(window, paths[4]);
+  assert.equal(article.dataset.dyntFormationPhase, "formed");
+  controller.withdraw(article);
+  dispatchStrokeTransition(window, paths[4]);
   assert.equal(article.dataset.dyntFormationPhase, "unformed");
   controller.destroy();
 });
