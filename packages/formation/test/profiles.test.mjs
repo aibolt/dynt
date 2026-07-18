@@ -81,6 +81,7 @@ test("default registry exposes independently described profiles", () => {
     "chamfer-fold",
     "magnetic-segment",
     "radial-compass",
+    "aperture-iris",
   ]);
   assert.equal(
     defaultFormationProfiles.get("line-push").geometry.type,
@@ -113,6 +114,7 @@ test("default registry exposes independently described profiles", () => {
   assert.equal(defaultFormationProfiles.get("chamfer-fold").geometry.pattern, "chamfer");
   assert.equal(defaultFormationProfiles.get("magnetic-segment").geometry.pattern, "magnetic");
   assert.equal(defaultFormationProfiles.get("radial-compass").geometry.pattern, "compass");
+  assert.equal(defaultFormationProfiles.get("aperture-iris").geometry.pattern, "aperture");
 });
 
 test("Squircle Sweep forms and withdraws its vertical shell", () => {
@@ -212,6 +214,32 @@ test("Radial Compass locates its shell from four centre spokes", () => {
   assert.equal(article.dataset.dyntFormationPhase, "formed");
   controller.withdraw(article);
   dispatchStrokeTransition(window, paths[2]);
+  assert.equal(article.dataset.dyntFormationPhase, "unformed");
+  controller.destroy();
+});
+
+test("Aperture Iris converges blades before four shell quadrants", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><article>Article</article></main>";
+  const article = document.querySelector("article");
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "article",
+    profile: "aperture-iris",
+  });
+  const layer = article.querySelector("[data-dynt-formation-pattern='aperture']");
+  const paths = layer.querySelectorAll("path");
+
+  assert.equal(paths.length, 6);
+  assert.match(paths[0].getAttribute("d"), /M12 12 L50 50/);
+  assert.equal(paths[0].classList.contains("dynt-formation__construct-path--temporary"), true);
+  assert.equal(paths[5].classList.contains("dynt-formation__construct-path--signature"), true);
+  controller.form(article);
+  dispatchStrokeTransition(window, paths[5]);
+  assert.equal(article.dataset.dyntFormationPhase, "formed");
+  controller.withdraw(article);
+  dispatchStrokeTransition(window, paths[5]);
   assert.equal(article.dataset.dyntFormationPhase, "unformed");
   controller.destroy();
 });

@@ -354,6 +354,31 @@ const BUILTIN_PROFILES = [
     },
     rendering: "svg-construct",
   },
+  {
+    name: "aperture-iris",
+    className: "dynt-formation--aperture-iris",
+    geometry: {
+      type: "constructed",
+      pattern: "aperture",
+    },
+    tokens: [
+      "duration",
+      "easing",
+      "fill-color",
+      "line-color",
+      "line-width",
+    ],
+    lifecycle: {
+      formComplete: { propertyName: "stroke-dashoffset" },
+      withdrawComplete: { propertyName: "stroke-dashoffset" },
+    },
+    capabilities: {
+      reducedMotion: true,
+      responsive: true,
+      viewportFlow: true,
+    },
+    rendering: "svg-construct",
+  },
 ] as const satisfies readonly FormationProfileDefinition[];
 
 export type FormationProfile = typeof BUILTIN_PROFILES[number]["name"];
