@@ -438,11 +438,113 @@ function createPerimeterDecoration(element: HTMLElement) {
   return layer;
 }
 
+type ConstructPattern = Extract<
+  FormationProfileDefinition["geometry"],
+  { type: "constructed" }
+>["pattern"];
+
+type ConstructPath = Readonly<{
+  className?: string;
+  d: string;
+  delay: number;
+  reverseDelay: number;
+}>;
+
+function constructPaths(pattern: ConstructPattern): readonly ConstructPath[] {
+  if (pattern === "squircle") {
+    return [
+      { d: "M50 0 C84 0 100 16 100 50 C100 84 84 100 50 100 C16 100 0 84 0 50 C0 16 16 0 50 0 Z", delay: 0, reverseDelay: 0 },
+      { className: "dynt-formation__construct-path--signature", d: "M42 0 H58 M42 100 H58", delay: 120, reverseDelay: 80 },
+    ];
+  }
+  if (pattern === "chamfer") {
+    return [
+      { d: "M0 12 L12 0 M88 0 L100 12 M100 88 L88 100 M12 100 L0 88", delay: 0, reverseDelay: 120 },
+      { d: "M12 0 H88", delay: 90, reverseDelay: 90 },
+      { d: "M100 12 V88", delay: 140, reverseDelay: 50 },
+      { d: "M88 100 H12", delay: 190, reverseDelay: 20 },
+      { d: "M0 88 V12", delay: 240, reverseDelay: 0 },
+    ];
+  }
+  if (pattern === "magnetic") {
+    return [
+      { d: "M0 0 H50 M100 0 H50", delay: 0, reverseDelay: 140 },
+      { d: "M100 0 V50 M100 100 V50", delay: 70, reverseDelay: 100 },
+      { d: "M100 100 H50 M0 100 H50", delay: 140, reverseDelay: 70 },
+      { d: "M0 100 V50 M0 0 V50", delay: 210, reverseDelay: 30 },
+      { className: "dynt-formation__construct-path--signature", d: "M47 0 H53 M100 47 V53 M53 100 H47 M0 53 V47", delay: 280, reverseDelay: 0 },
+    ];
+  }
+  if (pattern === "compass") {
+    return [
+      { className: "dynt-formation__construct-path--temporary", d: "M50 50 V0 M50 50 H100 M50 50 V100 M50 50 H0", delay: 0, reverseDelay: 120 },
+      { d: "M10 0 H90 Q100 0 100 10 V90 Q100 100 90 100 H10 Q0 100 0 90 V10 Q0 0 10 0 Z", delay: 130, reverseDelay: 60 },
+      { className: "dynt-formation__construct-path--signature", d: "M45 0 H55 M100 45 V55 M55 100 H45 M0 55 V45", delay: 260, reverseDelay: 0 },
+    ];
+  }
+  if (pattern === "aperture") {
+    return [
+      { className: "dynt-formation__construct-path--temporary", d: "M12 12 L50 50 L88 12 M88 88 L50 50 L12 88", delay: 0, reverseDelay: 140 },
+      { d: "M50 0 H12 Q0 0 0 12 V50", delay: 100, reverseDelay: 100 },
+      { d: "M50 0 H88 Q100 0 100 12 V50", delay: 140, reverseDelay: 70 },
+      { d: "M100 50 V88 Q100 100 88 100 H50", delay: 180, reverseDelay: 40 },
+      { d: "M50 100 H12 Q0 100 0 88 V50", delay: 220, reverseDelay: 20 },
+      { className: "dynt-formation__construct-path--signature", d: "M47 0 H53 M100 47 V53 M53 100 H47 M0 53 V47", delay: 280, reverseDelay: 0 },
+    ];
+  }
+  return [
+    { d: "M0 8 C22 -3 78 -3 100 8", delay: 0, reverseDelay: 150 },
+    { d: "M92 0 C103 22 103 78 92 100", delay: 80, reverseDelay: 100 },
+    { d: "M100 92 C78 103 22 103 0 92", delay: 160, reverseDelay: 50 },
+    { d: "M8 100 C-3 78 -3 22 8 0", delay: 240, reverseDelay: 0 },
+  ];
+}
+
+function createConstructDecoration(element: HTMLElement, pattern: ConstructPattern) {
+  const layer = element.ownerDocument.createElement("span");
+  const svg = element.ownerDocument.createElementNS(SVG_NAMESPACE, "svg");
+  const paths = constructPaths(pattern);
+
+  layer.className = `dynt-formation__construct dynt-formation__construct--${pattern}`;
+  layer.setAttribute(PERIMETER_ATTRIBUTE, "");
+  layer.setAttribute("data-dynt-formation-pattern", pattern);
+  layer.setAttribute("aria-hidden", "true");
+  svg.classList.add("dynt-formation__construct-svg");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("preserveAspectRatio", "none");
+
+  for (const [index, definition] of paths.entries()) {
+    const path = element.ownerDocument.createElementNS(SVG_NAMESPACE, "path");
+    path.classList.add("dynt-formation__construct-path");
+    if (definition.className) path.classList.add(definition.className);
+    if (index === paths.length - 1) {
+      path.classList.add("dynt-formation__construct-completion");
+    }
+    path.setAttribute("d", definition.d);
+    path.setAttribute("pathLength", "100");
+    path.style.setProperty("--dynt-construct-delay", `${definition.delay}ms`);
+    path.style.setProperty("--dynt-construct-reverse-delay", `${definition.reverseDelay}ms`);
+    svg.append(path);
+  }
+
+  layer.append(svg);
+  element.append(layer);
+  return layer;
+}
+
 function ensureDecoration(element: HTMLElement, ownership: ElementOwnership) {
-  if (ownership.profile.rendering !== "svg-perimeter") return;
+  if (ownership.profile.rendering === "pseudo-elements") return;
   if (ownership.decoration?.parentElement === element) return;
   ownership.decoration?.remove();
-  ownership.decoration = createPerimeterDecoration(element);
+  ownership.decoration = ownership.profile.rendering === "svg-perimeter"
+    ? createPerimeterDecoration(element)
+    : createConstructDecoration(
+      element,
+      (ownership.profile.geometry as Extract<
+        FormationProfileDefinition["geometry"],
+        { type: "constructed" }
+      >).pattern,
+    );
 }
 
 export function createFormation<ProfileName extends string = FormationProfile>({
@@ -752,6 +854,12 @@ export function createFormation<ProfileName extends string = FormationProfile>({
 
     const ownership = ELEMENT_OWNERSHIP.get(element);
     if (!ownership) return;
+    if (
+      ownership.profile.rendering === "svg-construct"
+      && !eventTarget?.matches?.(".dynt-formation__construct-completion")
+    ) {
+      return;
+    }
 
     const formComplete = ownership.profile.lifecycle.formComplete;
     const withdrawComplete = ownership.profile.lifecycle.withdrawComplete;

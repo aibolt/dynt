@@ -20,6 +20,16 @@ export type FormationProfileDefinition<Name extends string = string> = Readonly<
       type: "perimeter";
       edgeOrder: "clockwise" | "counter-clockwise";
     }
+    | {
+      type: "constructed";
+      pattern:
+        | "aperture"
+        | "chamfer"
+        | "compass"
+        | "magnetic"
+        | "membrane"
+        | "squircle";
+    }
   >;
   tokens: readonly FormationTokenName[];
   lifecycle: Readonly<{
@@ -31,7 +41,7 @@ export type FormationProfileDefinition<Name extends string = string> = Readonly<
     responsive: boolean;
     viewportFlow?: boolean;
   }>;
-  rendering: "pseudo-elements" | "svg-perimeter";
+  rendering: "pseudo-elements" | "svg-construct" | "svg-perimeter";
 }>;
 
 export type FormationProfileRegistry<Name extends string = string> = Readonly<{
@@ -73,7 +83,17 @@ export function createFormationProfileRegistry<
         || profile.geometry.edgeOrder === "vertical-horizontal"
       )
       && profile.rendering === "pseudo-elements";
-    if (!perimeterGeometry && !edgeGeometry) {
+    const constructedGeometry = profile.geometry?.type === "constructed"
+      && [
+        "aperture",
+        "chamfer",
+        "compass",
+        "magnetic",
+        "membrane",
+        "squircle",
+      ].includes(profile.geometry.pattern)
+      && profile.rendering === "svg-construct";
+    if (!perimeterGeometry && !edgeGeometry && !constructedGeometry) {
       throw new TypeError("DYNT Formation profiles require supported geometry and rendering metadata.");
     }
     if (

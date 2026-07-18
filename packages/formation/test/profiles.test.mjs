@@ -50,6 +50,28 @@ function customProfile(name = "custom-lines") {
   };
 }
 
+function customConstructProfile(name = "custom-construct") {
+  return {
+    name,
+    className: `dynt-formation--${name}`,
+    geometry: {
+      type: "constructed",
+      pattern: "squircle",
+    },
+    tokens: ["duration", "easing", "fill-color", "line-color", "line-width", "radius"],
+    lifecycle: {
+      formComplete: { propertyName: "stroke-dashoffset" },
+      withdrawComplete: { propertyName: "stroke-dashoffset" },
+    },
+    capabilities: {
+      reducedMotion: true,
+      responsive: true,
+      viewportFlow: true,
+    },
+    rendering: "svg-construct",
+  };
+}
+
 test("default registry exposes independently described profiles", () => {
   assert.deepEqual(defaultFormationProfiles.names, ["line-push", "arc-trace", "line-rise"]);
   assert.equal(
@@ -184,6 +206,38 @@ test("a custom typed registry supplies profile metadata to the engine", () => {
   assert.equal(article.classList.contains("dynt-formation--custom-lines"), true);
   controller.destroy();
   assert.equal(article.classList.contains("dynt-formation--custom-lines"), false);
+});
+
+test("SVG construction profiles own staged paths and the reversible lifecycle", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><article>Article</article></main>";
+  const registry = createFormationProfileRegistry([customConstructProfile()]);
+  const article = document.querySelector("article");
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "article",
+    profile: "custom-construct",
+    profiles: registry,
+  });
+  const layer = article.querySelector("[data-dynt-formation-pattern='squircle']");
+  const completion = layer.querySelector(".dynt-formation__construct-completion");
+
+  assert.equal(layer.getAttribute("aria-hidden"), "true");
+  assert.equal(layer.querySelectorAll("path").length, 2);
+  assert.equal(completion.getAttribute("pathLength"), "100");
+
+  controller.form(article);
+  dispatchStrokeTransition(window, layer.querySelector("path:not(.dynt-formation__construct-completion)"));
+  assert.equal(article.dataset.dyntFormationPhase, "constructing");
+  dispatchStrokeTransition(window, completion);
+  assert.equal(article.dataset.dyntFormationPhase, "formed");
+
+  controller.withdraw(article);
+  dispatchStrokeTransition(window, completion);
+  assert.equal(article.dataset.dyntFormationPhase, "unformed");
+  controller.destroy();
+  assert.equal(article.querySelector("[data-dynt-formation-pattern]"), null);
 });
 
 test("registry validation rejects duplicate names and unscoped classes", () => {
