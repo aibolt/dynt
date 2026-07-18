@@ -501,7 +501,7 @@ test("delegated pointer input writes bounded tilt then becomes idle", () => {
   controller.destroy();
 });
 
-test("corner tilt compresses the near overflow and raises the far edge", () => {
+test("directional tilt compresses the near overflow and raises the far edge", () => {
   const window = new Window();
   const frames = installAnimationFrames(window);
   const document = window.document;

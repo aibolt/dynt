@@ -41,7 +41,7 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 ## Phase 3 — Kinetic minimum viable engine
 
 - [x] Implement the independent `@dynt/kinetic` DOM ownership package.
-- [x] Add bounded corner-coupled tilt.
+- [x] Add bounded directional tilt with near-side compression and far-side expansion.
 - [x] Add cleanup, ownership, and reduced-motion behavior.
 - [x] Verify that Kinetic works on plain HTML without Formation.
 
@@ -93,22 +93,22 @@ This checklist tracks delivery status. See the [full implementation plan](IMPLEM
 - [ ] Configure the protected GitHub `npm` environment and npm trusted publishers.
 - [ ] Publish the `v0.5.0` tag after the preview candidate is merged.
 
-## Planned formation releases
+## Formation profile delivery
 
 The profile registry and lifecycle are already the shared foundation. Each profile must pass the same reversible lifecycle, cleanup, reduced-motion, responsive, and three-browser contracts before it is marked complete.
 
-### `0.6.x` — traced geometry
+### Traced geometry
 
 - [x] Arc Trace.
-- [ ] Squircle Sweep.
-- [ ] Chamfer Fold.
+- [x] Squircle Sweep.
+- [x] Chamfer Fold.
 
-### `0.7.x` — segmented and radial geometry
+### Segmented and radial geometry
 
-- [ ] Magnetic Segment.
-- [ ] Radial Compass.
+- [x] Magnetic Segment.
+- [x] Radial Compass.
 
-### `0.8.x` — aperture and membrane geometry
+### Aperture and membrane geometry
 
-- [ ] Aperture Iris.
-- [ ] Elastic Membrane.
+- [x] Aperture Iris.
+- [x] Elastic Membrane.

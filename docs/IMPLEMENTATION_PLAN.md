@@ -1,5 +1,7 @@
 # DYNT Implementation Plan
 
+Status: the `0.5.0` preview implementation and its local verification gates are complete. This document preserves the design contracts that shaped the implementation; [the roadmap](ROADMAP.md) records current delivery, and npm scope access remains the only external release operation.
+
 ## 1. Product objective
 
 DYNT will let a developer add constructed visual formations, physical interface responses, or both to an existing application without editing each individual component.
@@ -9,7 +11,7 @@ A developer will initialize DYNT once against an explicit application root and a
 Formation and Kinetic are separate products:
 
 - `@dynt/formation` constructs, encloses, reveals, withdraws, and deconstructs interface geometry.
-- `@dynt/kinetic` adds corner-coupled tilt, drift, circular turbulent waves, impact, and content response.
+- `@dynt/kinetic` adds directional tilt, drift, circular turbulent waves, impact, and content response.
 
 Either package must work by itself. Installing or using one package must not install, initialize, or require the other.
 
@@ -483,7 +485,7 @@ Deliverables:
 
 - Independent package build.
 - Delegated pointer input.
-- Corner-coupled tilt.
+- Directional tilt with near-side compression and far-side expansion.
 - Bounded motion and idle suspension.
 - Refresh, pause, resume, and destroy.
 
