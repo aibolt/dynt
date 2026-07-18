@@ -12,7 +12,8 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present && npm run build:examples",
+    "build:examples": "esbuild examples/framework-browser/app.jsx --bundle --format=esm --minify --outfile=examples/framework-browser/bundle.js",
     "test": "npm run test --workspaces --if-present && node --test test/*.test.mjs",
     "test:browser": "playwright test",
     "test:packages": "npm run build && node scripts/verify-packages.mjs",
@@ -20,7 +21,8 @@
     "verify:release-version": "node scripts/verify-release-version.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "1.61.1"
+    "@playwright/test": "1.61.1",
+    "esbuild": "0.28.1"
   },
   "engines": {
     "node": ">=20"

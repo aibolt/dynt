@@ -18,6 +18,22 @@ function installWindow() {
   });
   globalThis.HTMLElement = window.HTMLElement;
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+  window.HTMLCanvasElement.prototype.getContext = () => ({
+    clearRect() {},
+    imageSmoothingEnabled: true,
+    setTransform() {},
+  });
+  window.HTMLElement.prototype.getBoundingClientRect = () => ({
+    bottom: 100,
+    height: 100,
+    left: 0,
+    right: 100,
+    top: 0,
+    width: 100,
+    x: 0,
+    y: 0,
+    toJSON() {},
+  });
   return window;
 }
 
@@ -59,18 +75,26 @@ test("Kinetic hook tolerates React updates and removes its decoration", async ()
       observe: true,
       cells: { shape: "diamond", size: [40, 32, 24] },
       flow: { overflow: 14, turbulence: 0.4 },
+      groups: [{ selector: ".nested", cells: { shape: "hexagon", size: 18 } }],
     });
     return createElement(
       "main",
       { ref: rootRef },
-      createElement("button", { className: "surface" }, label),
+      createElement(
+        "article",
+        { className: "surface" },
+        createElement("button", { className: "surface nested" }, label),
+      ),
     );
   }
 
   const root = createRoot(container);
   await act(() => root.render(createElement(App, { label: "First" })));
   const button = container.querySelector("button");
+  const canvas = button.querySelector("canvas");
   assert.equal(button.querySelectorAll("[data-dynt-kinetic-layer]").length, 1);
+  assert.equal(canvas.dataset.dyntCellShape, "hexagon");
+  assert.equal(canvas.dataset.dyntCellSize, "18");
 
   await act(() => root.render(createElement(App, { label: "Updated" })));
   assert.equal(button.textContent.includes("Updated"), true);
