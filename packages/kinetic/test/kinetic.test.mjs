@@ -236,6 +236,17 @@ test("built-in presets remain immutable and directly consumable by the core engi
 
   assert.equal(Object.isFrozen(kineticPresets.locator), true);
   assert.equal(kineticPresets.locator.cells.shape, "hexagon");
+  assert.deepEqual(Object.keys(kineticPresets), [
+    "structural",
+    "locator",
+    "laminar",
+    "material",
+    "tidal",
+    "impact",
+  ]);
+  assert.equal(Object.isFrozen(kineticPresets.tidal.flow), true);
+  assert.equal(kineticPresets.tidal.flow.multi, true);
+  assert.equal(kineticPresets.impact.cells.shape, "diamond");
   assert.equal(controller.elements.length, 1);
   controller.destroy();
 });
