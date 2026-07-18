@@ -297,6 +297,11 @@
   border-radius: var(--dynt-formation-radius);
 }
 
+:where(.dynt-formation--squircle-sweep) {
+  --dynt-formation-duration: 680ms;
+  --dynt-formation-radius: 32px;
+}
+
 :where(.dynt-formation.dynt-kinetic) > :where(.dynt-formation__construct) {
   transform: perspective(1100px) rotateX(var(--dynt-tilt-x)) rotateY(var(--dynt-tilt-y)) translateZ(0);
   will-change: transform;

@@ -73,7 +73,12 @@ function customConstructProfile(name = "custom-construct") {
 }
 
 test("default registry exposes independently described profiles", () => {
-  assert.deepEqual(defaultFormationProfiles.names, ["line-push", "arc-trace", "line-rise"]);
+  assert.deepEqual(defaultFormationProfiles.names, [
+    "line-push",
+    "arc-trace",
+    "line-rise",
+    "squircle-sweep",
+  ]);
   assert.equal(
     defaultFormationProfiles.get("line-push").geometry.type,
     "line-forge",
@@ -101,6 +106,30 @@ test("default registry exposes independently described profiles", () => {
   assert.equal(defaultFormationProfiles.get("arc-trace").geometry.type, "perimeter");
   assert.equal(defaultFormationProfiles.get("arc-trace").rendering, "svg-perimeter");
   assert.equal(defaultFormationProfiles.get("arc-trace").capabilities.viewportFlow, false);
+  assert.equal(defaultFormationProfiles.get("squircle-sweep").geometry.pattern, "squircle");
+});
+
+test("Squircle Sweep forms and withdraws its vertical shell", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><article>Article</article></main>";
+  const article = document.querySelector("article");
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "article",
+    profile: "squircle-sweep",
+  });
+  const layer = article.querySelector("[data-dynt-formation-pattern='squircle']");
+  const completion = layer.querySelector(".dynt-formation__construct-completion");
+
+  assert.equal(layer.querySelectorAll("path").length, 2);
+  controller.form(article);
+  dispatchStrokeTransition(window, completion);
+  assert.equal(article.dataset.dyntFormationPhase, "formed");
+  controller.withdraw(article);
+  dispatchStrokeTransition(window, completion);
+  assert.equal(article.dataset.dyntFormationPhase, "unformed");
+  controller.destroy();
 });
 
 test("Arc Trace draws and withdraws one owned perimeter with opposite registers", () => {
