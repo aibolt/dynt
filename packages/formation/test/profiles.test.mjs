@@ -82,6 +82,7 @@ test("default registry exposes independently described profiles", () => {
     "magnetic-segment",
     "radial-compass",
     "aperture-iris",
+    "elastic-membrane",
   ]);
   assert.equal(
     defaultFormationProfiles.get("line-push").geometry.type,
@@ -115,6 +116,7 @@ test("default registry exposes independently described profiles", () => {
   assert.equal(defaultFormationProfiles.get("magnetic-segment").geometry.pattern, "magnetic");
   assert.equal(defaultFormationProfiles.get("radial-compass").geometry.pattern, "compass");
   assert.equal(defaultFormationProfiles.get("aperture-iris").geometry.pattern, "aperture");
+  assert.equal(defaultFormationProfiles.get("elastic-membrane").geometry.pattern, "membrane");
 });
 
 test("Squircle Sweep forms and withdraws its vertical shell", () => {
@@ -240,6 +242,32 @@ test("Aperture Iris converges blades before four shell quadrants", () => {
   assert.equal(article.dataset.dyntFormationPhase, "formed");
   controller.withdraw(article);
   dispatchStrokeTransition(window, paths[5]);
+  assert.equal(article.dataset.dyntFormationPhase, "unformed");
+  controller.destroy();
+});
+
+test("Elastic Membrane tensions four curved boundary rails", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><article>Article</article></main>";
+  const article = document.querySelector("article");
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "article",
+    profile: "elastic-membrane",
+    tokens: { radius: "14px" },
+  });
+  const layer = article.querySelector("[data-dynt-formation-pattern='membrane']");
+  const paths = layer.querySelectorAll("path");
+
+  assert.equal(paths.length, 4);
+  assert.match(paths[0].getAttribute("d"), /C22 -3 78 -3/);
+  assert.match(paths[3].getAttribute("d"), /C-3 78 -3 22/);
+  controller.form(article);
+  dispatchStrokeTransition(window, paths[3]);
+  assert.equal(article.dataset.dyntFormationPhase, "formed");
+  controller.withdraw(article);
+  dispatchStrokeTransition(window, paths[3]);
   assert.equal(article.dataset.dyntFormationPhase, "unformed");
   controller.destroy();
 });

@@ -379,6 +379,32 @@ const BUILTIN_PROFILES = [
     },
     rendering: "svg-construct",
   },
+  {
+    name: "elastic-membrane",
+    className: "dynt-formation--elastic-membrane",
+    geometry: {
+      type: "constructed",
+      pattern: "membrane",
+    },
+    tokens: [
+      "duration",
+      "easing",
+      "fill-color",
+      "line-color",
+      "line-width",
+      "radius",
+    ],
+    lifecycle: {
+      formComplete: { propertyName: "stroke-dashoffset" },
+      withdrawComplete: { propertyName: "stroke-dashoffset" },
+    },
+    capabilities: {
+      reducedMotion: true,
+      responsive: true,
+      viewportFlow: true,
+    },
+    rendering: "svg-construct",
+  },
 ] as const satisfies readonly FormationProfileDefinition[];
 
 export type FormationProfile = typeof BUILTIN_PROFILES[number]["name"];
