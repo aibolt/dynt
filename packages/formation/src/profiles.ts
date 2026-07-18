@@ -301,6 +301,32 @@ const BUILTIN_PROFILES = [
     },
     rendering: "svg-construct",
   },
+  {
+    name: "magnetic-segment",
+    className: "dynt-formation--magnetic-segment",
+    geometry: {
+      type: "constructed",
+      pattern: "magnetic",
+    },
+    tokens: [
+      "duration",
+      "easing",
+      "fill-color",
+      "line-color",
+      "line-style",
+      "line-width",
+    ],
+    lifecycle: {
+      formComplete: { propertyName: "stroke-dashoffset" },
+      withdrawComplete: { propertyName: "stroke-dashoffset" },
+    },
+    capabilities: {
+      reducedMotion: true,
+      responsive: true,
+      viewportFlow: true,
+    },
+    rendering: "svg-construct",
+  },
 ] as const satisfies readonly FormationProfileDefinition[];
 
 export type FormationProfile = typeof BUILTIN_PROFILES[number]["name"];

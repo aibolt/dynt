@@ -79,6 +79,7 @@ test("default registry exposes independently described profiles", () => {
     "line-rise",
     "squircle-sweep",
     "chamfer-fold",
+    "magnetic-segment",
   ]);
   assert.equal(
     defaultFormationProfiles.get("line-push").geometry.type,
@@ -109,6 +110,7 @@ test("default registry exposes independently described profiles", () => {
   assert.equal(defaultFormationProfiles.get("arc-trace").capabilities.viewportFlow, false);
   assert.equal(defaultFormationProfiles.get("squircle-sweep").geometry.pattern, "squircle");
   assert.equal(defaultFormationProfiles.get("chamfer-fold").geometry.pattern, "chamfer");
+  assert.equal(defaultFormationProfiles.get("magnetic-segment").geometry.pattern, "magnetic");
 });
 
 test("Squircle Sweep forms and withdraws its vertical shell", () => {
@@ -151,6 +153,31 @@ test("Chamfer Fold constructs corner joints before its straight rails", () => {
   assert.match(paths[0].getAttribute("d"), /M0 12 L12 0/);
   assert.equal(paths[0].style.getPropertyValue("--dynt-construct-delay"), "0ms");
   assert.equal(paths[1].style.getPropertyValue("--dynt-construct-delay"), "90ms");
+  controller.form(article);
+  dispatchStrokeTransition(window, paths[4]);
+  assert.equal(article.dataset.dyntFormationPhase, "formed");
+  controller.withdraw(article);
+  dispatchStrokeTransition(window, paths[4]);
+  assert.equal(article.dataset.dyntFormationPhase, "unformed");
+  controller.destroy();
+});
+
+test("Magnetic Segment joins distributed half-rails at four locks", () => {
+  const window = new Window();
+  const document = window.document;
+  document.body.innerHTML = "<main><article>Article</article></main>";
+  const article = document.querySelector("article");
+  const controller = createFormation({
+    root: document.querySelector("main"),
+    selector: "article",
+    profile: "magnetic-segment",
+  });
+  const layer = article.querySelector("[data-dynt-formation-pattern='magnetic']");
+  const paths = layer.querySelectorAll("path");
+
+  assert.equal(paths.length, 5);
+  assert.match(paths[0].getAttribute("d"), /M0 0 H50 M100 0 H50/);
+  assert.equal(paths[4].classList.contains("dynt-formation__construct-path--signature"), true);
   controller.form(article);
   dispatchStrokeTransition(window, paths[4]);
   assert.equal(article.dataset.dyntFormationPhase, "formed");
